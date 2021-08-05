@@ -7,6 +7,7 @@ pushfirst!(PyVector(pyimport("sys")["path"]), pwd())
 of = pyimport("openfermion")
 ham = pyimport("ham_utils")
 fermionic = pyimport("ferm_utils")
+mp2 = pyimport("mp2_utils")
 
 function obtain_hamiltonian(mol_name; basis="sto3g", ferm=true, geometry=1, n_elec=false)
 	if n_elec == false
@@ -50,19 +51,29 @@ function real_round(x,tol=real_tol)
 	return real(x)
 end
 
-function expectation_value(op::PyObject, psi, n=of.count_qubits(op); frag_flavour=META.ff, u_flavour=META.uf)
-	e_val = of.expectation(of.get_sparse_operator(op, n_qubits=n), psi)
+function expectation_value(op::PyObject, psi, n=of.count_qubits(op); frag_flavour=META.ff, u_flavour=META.uf, NORM = NORM_BRAKETS)
+	#returns real part of expectation value of openfermion operator
+	if NORM == true
+		e_val = of.expectation(of.get_sparse_operator(of.normal_ordered(op), n_qubits=n), psi)
+	else
+		e_val = of.expectation(of.get_sparse_operator(op, n_qubits=n), psi)
+	end
 
 	return real_round(e_val)
 end
 
 function expectation_value(frag::fragment, psi, n=frag.n; frag_flavour=META.ff, u_flavour=META.uf, norm_ord = NORM_ORDERED)
+	#returns expectation value of normalized fragment (i.e. cn Fn -> <Fn>)
 	op = fragment_to_normalized_ferm(frag, frag_flavour = frag_flavour, u_flavour = u_flavour, norm_ord = norm_ord)
 	return expectation_value(op, psi, n, frag_flavour = frag_flavour, u_flavour = u_flavour)
 end
 
-function variance_value(op::PyObject, psi, n=of.count_qubits(op); frag_flavour=META.ff, u_flavour=META.uf, neg_tol = neg_tol)
-	var_val = of.variance(of.get_sparse_operator(op, n_qubits=n), psi)
+function variance_value(op::PyObject, psi, n=of.count_qubits(op); frag_flavour=META.ff, u_flavour=META.uf, neg_tol = neg_tol, NORM = NORM_BRAKETS)
+	if NORM == false
+		var_val = of.variance(of.get_sparse_operator(op, n_qubits=n), psi)
+	else
+		var_val = of.variance(of.get_sparse_operator(of.normal_ordered(op), n_qubits=n), psi)
+	end
 
 	var_val = real_round(var_val)
 	if -neg_tol <= var_val < 0
@@ -85,4 +96,16 @@ function get_wavefunction(h_ferm, wfs)
 	end
 
 	return psi
+end
+
+function obtain_ccsd(mol_name; geometry=1, basis="sto3g", spin_orb=true)
+
+	of_mol = ham.get_mol(mol_name, geometry=geometry, basis=basis)
+	ccsd = mp2.get_ccsd_op(of_mol)
+	Hccsd = ccsd + of.hermitian_conjugated(ccsd)
+	#Hccsd = ccsd - of.hermitian_conjugated(ccsd)
+	
+	tbt = fermionic.get_chemist_tbt(Hccsd, spin_orb=spin_orb)
+
+	return tbt, Hccsd
 end
