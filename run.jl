@@ -30,7 +30,7 @@ if SUPPRESSOR == false
 		@everywhere const α_max = parse(Int64, remotecall_fetch(i->ARGS[i],1,6))
 	end
 else
-	using Suppressor
+	@everywhere using Suppressor
 	if args_len >= 3
 		@everywhere @suppress_err global opt_flavour = remotecall_fetch(i->ARGS[i],1,3)
 	end
@@ -111,8 +111,9 @@ if POST == true
 	t00 = time()
 	for (i,frag) in enumerate(FRAGS)
 		op = fragment_to_ferm(frag)
+		norm_op = fragment_to_normalized_ferm(frag)
 		global h_meas += op
-		EXPS[i] = expectation_value(op, psi)
+		EXPS[i] = expectation_value(norm_op, psi)
 		VARS[i] = variance_value(op, psi)
 		COEFFS[i] = abs(frag.cn[1])
 	end
