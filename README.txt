@@ -3,7 +3,7 @@
 #############################################################################
 
 
-Factorizes two-body operators into fragments with special properties as H = sum_n c_n U_n S_n U_n^* (e.g. S_n^2 = 1).
+Factorizes two-body operators into fragments with special properties as H = sum_n c_n U_n^* S_n U_n (e.g. S_n^2 = 1).
 
 
 ######## HOW TO USE:
@@ -19,7 +19,7 @@ e.g.:
         - CSA: type of fragment corresponding to CSA element (i.e. 2nd degree polynomial of orbitals)
         - MFR: (can be written as MF-real as well) real mean-field rotations pertaining to SO(n) group
         - 8: maximum number of fragments α_max. For frni optimizations it's the used number of fragments
-'julia -p 5 run.jl h2' -> runs h2 in 5 processors. Default optimization, fragment, and unitary flavours, as well as default α_max, are shown in config.jl under the names opt_flavour, frag_flavour, u_flavour, and α_max.
+'julia -p 5 run.jl lih' -> runs lih in 5 processors. Default optimization, fragment, and unitary flavours, as well as default α_max, are shown in config.jl under the names opt_flavour, frag_flavour, u_flavour, and α_max.
 
 Most general case, we have
 'julia -p N run.jl mol_name SAVENAME opt_flavour frag_flavour u_flavour α_max'
