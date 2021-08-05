@@ -20,6 +20,9 @@ end
 struct CSA <: FRAG_FLAVOUR
 end
 
+struct iCSA <: FRAG_FLAVOUR
+end
+
 struct CGMFR <: FRAG_FLAVOUR
 end
 
@@ -49,6 +52,8 @@ elseif frag_flavour == "UPOL"
 	ff = UPOL()
 elseif frag_flavour == "O3"
 	ff = O3()
+elseif frag_flavour == "iCSA"
+	ff = iCSA()
 else
 	error("Trying to build meta frag_flavour for fast compilation for $frag_flavour, not defined in structs.jl!")
 end

@@ -14,6 +14,28 @@ function csa_tbt_builder(coeffs, n)
 	return tbt
 end
 
+function icsa_tbt_builder(coeffs, n)
+	tbt = zeros(Complex{Float64},n,n,n,n)
+
+	idx = 1
+	for i in 1:n
+		for j in i:n
+			tbt[i,i,j,j] = coeffs[idx]
+			tbt[j,j,i,i] = coeffs[idx]
+			idx += 1
+		end
+	end
+
+	for i in 1:n
+		for j in i:n
+			tbt[i,i,j,j] += 1im * coeffs[idx]
+			tbt[j,j,i,i] += 1im * coeffs[idx]
+			idx += 1
+		end
+	end
+
+	return tbt
+end
 
 function cgmfr_tbt_builder(k, n)
 	tbt = zeros(Float64,n,n,n,n)
@@ -237,6 +259,8 @@ function number_of_classes(flavour = META.ff :: FRAG_FLAVOUR)
 		return 10
 	elseif typeof(flavour) == CSA
 		return 1
+	elseif typeof(flavour) == iCSA
+		return 1
 	elseif typeof(flavour) == GMFR
 		return 3
 	elseif typeof(flavour) == UPOL
@@ -263,6 +287,8 @@ function fragment_to_normalized_tbt(frag::fragment; frag_flavour = META.ff, u_fl
 		tbt = cgmfr_tbt_builder(frag.class, n)
 	elseif typeof(frag_flavour) == CSA
 		tbt = csa_tbt_builder(frag.cn, n)
+	elseif typeof(frag_flavour) == iCSA
+		tbt = icsa_tbt_builder(frag.cn, n)
 	elseif typeof(frag_flavour) == GMFR
 		tbt = gmfr_tbt_builder(frag.class, n)
 	elseif typeof(frag_flavour) == UPOL
@@ -273,11 +299,16 @@ function fragment_to_normalized_tbt(frag::fragment; frag_flavour = META.ff, u_fl
 		error("Trying to build normalized tbt from fragment with flavour $(frag.flavour), not implemented")
 	end
 
-	return unitary_rotation(frag.u_params, tbt, n, u_flavour)
+	if frag.spin_orb == false
+		return unitary_rotation(frag.u_params, tbt ./ 4, n, u_flavour)
+	else
+		return unitary_rotation(frag.u_params, tbt, n, u_flavour)
+	end
 end
 
 function fragment_to_tbt(frag::fragment; frag_flavour = META.ff, u_flavour = META.uf)
-	if typeof(frag_flavour) == CSA
+	if typeof(frag_flavour) == CSA || typeof(frag_flavour) == iCSA
+		#CSA family has no normalized version since all coeffs are λij's
 		return fragment_to_normalized_tbt(frag, frag_flavour=frag_flavour, u_flavour=u_flavour)
 	else
 		return frag.cn[1] * fragment_to_normalized_tbt(frag, frag_flavour=frag_flavour, u_flavour=u_flavour)
@@ -290,6 +321,8 @@ function frag_coeff_length(n, frag_flavour = META.ff)
 		return 1
 	elseif typeof(frag_flavour) == CSA
 		return Int(n*(n+1)/2)
+	elseif typeof(frag_flavour) == iCSA
+		return Int(n*(n+1))
 	elseif typeof(frag_flavour) == GMFR
 		return 1
 	elseif typeof(frag_flavour) == UPOL
@@ -308,6 +341,8 @@ function frag_num_zeros(n, frag_flavour = META.ff)
 		return 1
 	elseif typeof(frag_flavour) == CSA
 		return Int(n*(n+1)/2)
+	elseif typeof(frag_flavour) == iCSA
+		return Int(n*(n+1))
 	elseif typeof(frag_flavour) == GMFR
 		return 1
 	elseif typeof(frag_flavour) == UPOL
