@@ -11,6 +11,7 @@ const reps = 1 #number of repetitions, useful for better exploring initial condi
 const spin_orb = false #whether spin-orbitals (true) or orbitals (false) are considered. setting false changes fragment properties!
 
 const NORM_ORDERED = false #whether operators are normal ordered automatically
+const NORM_BRAKETS = true #whether braket operations (e.g. variances and expectations) automatically normalize operator before calculation, shouldn't change results
 
 const POST = true #do post-processing once fragments are obtained (get expectation values and variances)
 const PLOT = true #do correlation plot, requires POST=true
