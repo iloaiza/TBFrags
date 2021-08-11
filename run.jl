@@ -86,7 +86,7 @@ elseif opt_flavour == "greedy" || opt_flavour == "g"
 elseif opt_flavour == "og" || opt_flavour == "orthogonal-greedy"
 	println("Using λ=$λort for orthogonal greedy constrain value")
 	@time FRAGS = orthogonal_greedy_driver(tbt, decomp_tol, reps = reps, α_max=α_max, grad=grad, verbose=verbose, spin_orb=spin_orb)
-elseif opt_flavour == "frni" || opt_flavour == "full-rank-non-orthogonal"
+elseif opt_flavour == "frni" || opt_flavour == "full-rank-non-iterative"
 	num_classes = number_of_classes(frag_flavour)
 	class_train = rand(1:num_classes, α_max)
 	@show class_train
