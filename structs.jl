@@ -32,6 +32,9 @@ end
 struct UPOL <: FRAG_FLAVOUR
 end
 
+struct U11 <: FRAG_FLAVOUR
+end
+
 struct O3 <: FRAG_FLAVOUR
 end
 
@@ -50,6 +53,8 @@ elseif frag_flavour == "GMFR"
 	ff = GMFR()
 elseif frag_flavour == "UPOL"
 	ff = UPOL()
+elseif frag_flavour == "U11"
+	ff = U11()
 elseif frag_flavour == "O3"
 	ff = O3()
 elseif frag_flavour == "iCSA"

@@ -75,9 +75,21 @@ println("Starting MP2 calculations with:")
 @show grad
 @show reps
 
-_, h_ferm = obtain_tbt(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry)
+h_ferm, num_elecs = obtain_hamiltonian(mol_name, basis=basis, ferm=true, geometry=geometry, n_elec = true)
 tbt, Hccsd = obtain_ccsd(mol_name, basis=basis, spin_orb=spin_orb, geometry=geometry)
 
+#=
+E = of.eigenspectrum(Hccsd)
+
+@show E
+@show length(E)
+@show array_rounder(E,10)
+@show length(array_rounder(E,10))
+# =#
+
+num_orbs = length(tbt[:,1,1,1])
+println("Using two-body tensor representation with $num_orbs orbitals")
+# =
 if opt_flavour == "full-rank" || opt_flavour == "fr"
 	@time FRAGS = full_rank_driver(tbt, decomp_tol, reps = reps, α_max=α_max, grad=grad, verbose=verbose, x0=x0, K0=K0, spin_orb=spin_orb)
 elseif opt_flavour == "greedy" || opt_flavour == "g"

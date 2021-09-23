@@ -2,13 +2,14 @@ const wfs = "fci" #wavefunction type for <psi|OPERATOR|psi> calculations
 const basis = "sto3g" #basis for hamiltonian
 const geometry = 1.0  #molecular geometry
 const decomp_tol = 2.5e-6 #decomposition tolerance for number of fragments
-const α_max = 100 #maximum number of fragments
+const α_max = 9 #maximum number of fragments
 const verbose = true #set true to print current optimization values at each step, useful if calculation needs to be restarted
 const saving = true #true not implemented, will save x vector and K (class-train for methods with more than one class) at each step of the optimization algorithm
 ######saving = false stops loading saving.jl module (no need for HDF5)
 const grad = false #set true for using gradients during optimization, grad function needs to be implemented for flavours
 const reps = 1 #number of repetitions, useful for better exploring initial conditions space and using all processors during parallelization
-const spin_orb = false #whether spin-orbitals (true) or orbitals (false) are considered. setting false changes fragment properties!
+const spin_orb = true #whether spin-orbitals (true) or normalized orbitals (false) are considered. setting false changes fragment properties!
+### where normalized orbital m_i = (1/2)(n_ia + n_ib)
 
 const NORM_ORDERED = false #whether operators are normal ordered automatically
 const NORM_BRAKETS = true #whether braket operations (e.g. variances and expectations) automatically normalize operator before calculation, shouldn't change results

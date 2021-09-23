@@ -1,7 +1,7 @@
 using Plots
 using Plots.PlotMeasures
 pyplot()
-vol_magnification = 2e2
+vol_magnification = 2e1
 
 FONT=font(40)
 SIZE=[1780,880]

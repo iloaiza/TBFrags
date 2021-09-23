@@ -1,9 +1,12 @@
-#FUNCTIONS FOR INTERFACING WITH PYTHON, USED FOR PASSING FROM FERMION OPERATOR <-> TWO-BODY TENSOR
+#FUNCTIONS FOR INTERFACING WITH PYTHON, USED FOR PASSING FROM FERMION OPERATOR <-> TWO-BODY TENSOR 
+#AND FOR CALCULATING EXPECTATION VALUES AND VARIANCES
 ENV["PYCALL_JL_RUNTIME_PYTHON"] = PY_DIR
 using PyCall
+using SparseArrays
 
 pushfirst!(PyVector(pyimport("sys")["path"]), pwd())
 #np = pyimport("numpy")
+scipy = pyimport("scipy")
 of = pyimport("openfermion")
 ham = pyimport("ham_utils")
 fermionic = pyimport("ferm_utils")
@@ -17,11 +20,19 @@ function obtain_hamiltonian(mol_name; basis="sto3g", ferm=true, geometry=1, n_el
 	end		
 end
 
-function obtain_tbt(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1)
-	h_ferm = obtain_hamiltonian(mol_name, basis=basis, ferm=ferm, geometry=geometry)
+function obtain_tbt(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1, n_elec=false)
+	if n_elec == false	
+		h_ferm = obtain_hamiltonian(mol_name, basis=basis, ferm=ferm, geometry=geometry)
+	else
+		h_ferm, num_elecs = obtain_hamiltonian(mol_name, basis=basis, ferm=ferm, geometry=geometry, n_elec=true)
+	end
 	tbt = fermionic.get_chemist_tbt(h_ferm, spin_orb=spin_orb)
 
-	return tbt, h_ferm
+	if n_elec == false
+		return tbt, h_ferm
+	else
+		return tbt, h_ferm, num_elecs
+	end
 end
 
 function tbt_to_ferm(tbt, spin_orb; norm_ord = NORM_ORDERED)
@@ -51,21 +62,38 @@ function real_round(x,tol=real_tol)
 	return real(x)
 end
 
-function expectation_value(op::PyObject, psi, n=of.count_qubits(op); frag_flavour=META.ff, u_flavour=META.uf, NORM = NORM_BRAKETS)
-	#returns real part of expectation value of openfermion operator
+function expectation_value(op::PyObject, psi, n=of.count_qubits(op); 
+							frag_flavour=META.ff, u_flavour=META.uf, NORM = NORM_BRAKETS, REAL = true)
+	#returns expectation value of openfermion operator
+	#if REAL=true, returns only real part
 	if NORM == true
 		e_val = of.expectation(of.get_sparse_operator(of.normal_ordered(op), n_qubits=n), psi)
 	else
 		e_val = of.expectation(of.get_sparse_operator(op, n_qubits=n), psi)
 	end
 
-	return real_round(e_val)
+	if REAL == true
+		return real_round(e_val)
+	else
+		return e_val
+	end
 end
 
 function expectation_value(frag::fragment, psi, n=frag.n; frag_flavour=META.ff, u_flavour=META.uf, norm_ord = NORM_ORDERED)
-	#returns expectation value of normalized fragment (i.e. cn Fn -> <Fn>)
+	#returns expectation value of normalized fragment (i.e. if frag = cn Fn -> returns <Fn>)
 	op = fragment_to_normalized_ferm(frag, frag_flavour = frag_flavour, u_flavour = u_flavour, norm_ord = norm_ord)
 	return expectation_value(op, psi, n, frag_flavour = frag_flavour, u_flavour = u_flavour)
+end
+
+function expectation_value(H :: SparseMatrixCSC, psi; 
+							frag_flavour=META.ff, u_flavour=META.uf, NORM = NORM_BRAKETS, REAL = true)
+	e_val = (psi' * H * psi)[1]
+
+	if REAL == true
+		return real_round(e_val)
+	else
+		return e_val
+	end
 end
 
 function variance_value(op::PyObject, psi, n=of.count_qubits(op); frag_flavour=META.ff, u_flavour=META.uf, neg_tol = neg_tol, NORM = NORM_BRAKETS)
@@ -88,24 +116,65 @@ function variance_value(frag::fragment, psi, n=frag.n; frag_flavour=META.ff, u_f
 	return variance_value(op, psi, n, frag_flavour=frag_flavour, u_flavour=u_flavour, neg_tol=neg_tol)
 end
 
-function get_wavefunction(h_ferm, wfs)
+function get_wavefunction(h_ferm, wfs, num_elecs = 0)
 	if wfs == "fci"
-		_, psi = of.get_ground_state(of.get_sparse_operator(h_ferm))
-	else
-		error("Trying to obtain wavefunction for wfs=$wfs, not implemented!")
+		e_fci, psi = of.get_ground_state(of.get_sparse_operator(h_ferm))
+	elseif wfs == "hf"
+		println("Obtaining Hartree-Fock wavefunction with $num_elecs electrons")
+		psi = fermionic.get_openfermion_hf(of.count_qubits(h_ferm), num_elecs)
 	end
 
 	return psi
 end
 
+function rotate_wavefunction_from_exp_generator(psi, G, coeff, n=of.count_qubits(G))
+	#return exp(1im*coeff*G) |psi>
+	Gmat = sparse((of.get_sparse_operator(G, n_qubits=n)).todense())
+	
+	return expmv(1im*coeff, Gmat, psi)
+end
+
+function rotate_wavefunction_from_exp_ah_generator(psi, G, coeff, n=of.count_qubits(G))
+	#return exp(coeff*G) |psi> <psi| (exp(-coeff*G))
+	Gmat = coeff .* (of.get_sparse_operator(G, n_qubits=n)).todense()
+	expG = exp(Gmat)
+	expH = expG'
+	expH2 = exp(-Gmat)
+	if expH != expH2
+		@show sum(abs2.(expH-expH2))
+	else
+		println("All checks out boss ;)")
+	end
+
+	return scipy.sparse.csr_matrix(expG * psi.todense() * expG')
+end
+
+
 function obtain_ccsd(mol_name; geometry=1, basis="sto3g", spin_orb=true)
 
 	of_mol = ham.get_mol(mol_name, geometry=geometry, basis=basis)
 	ccsd = mp2.get_ccsd_op(of_mol)
-	Hccsd = ccsd + of.hermitian_conjugated(ccsd)
-	#Hccsd = ccsd - of.hermitian_conjugated(ccsd)
+	#Hccsd = ccsd + of.hermitian_conjugated(ccsd)
+	Hccsd = ccsd - of.hermitian_conjugated(ccsd)
+	#Hccsd = 1im .*(ccsd - of.hermitian_conjugated(ccsd))
 	
-	tbt = fermionic.get_chemist_tbt(Hccsd, spin_orb=spin_orb)
+	tbt = 1im .* fermionic.get_chemist_tbt(Hccsd, spin_orb=spin_orb)
 
-	return tbt, Hccsd
+	return tbt, 1im * Hccsd
+end
+
+function array_rounder(A,digits=10)
+	#rounds and array up to #digits, removes repeated values
+    C = round.(A,digits=digits)
+    B = [C[1]]
+    lenA = length(A)
+
+    for i in 2:lenA 
+	    if C[i] == B[end]
+	     	#repeated value
+	    else
+		    push!(B,C[i])
+	    end
+    end
+    return B
 end
