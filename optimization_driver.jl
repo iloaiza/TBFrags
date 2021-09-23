@@ -1,7 +1,8 @@
 #FUNCTIONS FOR OPTIMIZATION DRIVERS (E.G. FULL-RANK, GREEDY)
 function greedy_driver(target, decomp_tol; reps = 1, 
 	α_max=500, grad=true, verbose=true, spin_orb = true, 
-	frag_flavour = META.ff, u_flavour=META.uf)
+	frag_flavour = META.ff, u_flavour=META.uf,
+	x0 = Float64[], K0 = Int64[])
 
 	n = length(target[:,1,1,1])
 	if spin_orb
@@ -30,10 +31,27 @@ function greedy_driver(target, decomp_tol; reps = 1,
 		end
 	end
 
+	if length(K0) != 0
+		println("Initial conditions found, using:")
+		@show x0
+		@show K0
+		α = length(K0) + 1
+		K_dict[1:length(K0)] .= K0
+		idx = 1
+		for i in 1:length(K0)
+			xeff = x0[idx:idx+xsize-1]
+			frag = fragment(xeff[fcl+1:end], xeff[1:fcl], K0[i], n_qubit, spin_orb)
+			push!(FRAGS, frag)
+			target -= fragment_to_tbt(frag)
+			idx += xsize
+		end
+	else
+		α = 1
+	end
+
 	cost = tbt_cost(0, target)
 	curr_tbt = 0 .* target
 
-	α = 1
 	FCost = SharedArray(zeros(tot_reps))
 	X_ARR = SharedArray(zeros(tot_reps, xsize))
 	println("Starting two-body tensor cost is $cost")
@@ -73,6 +91,7 @@ function greedy_driver(target, decomp_tol; reps = 1,
 	end
 
 	println("Finished greedy optimization with transformation train $(K_dict[1:α])")
+	@show length(FRAGS)
 	return FRAGS
 end
 
