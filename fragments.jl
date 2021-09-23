@@ -152,6 +152,7 @@ function upol_tbt_builder(ϕs, n)
 end
 
 function proj_tbt_builder(k, n)
+	#builds projector k out of 10 for 2-body tensors
 	tbt = zeros(Float64,n,n,n,n)
 
 	if k==1
@@ -254,6 +255,14 @@ function o3_tbt_builder(class, n; pmap=o3_map()) #90 different classes, (cgmfr(1
 	return tbt
 end
 
+function u11_tbt_builder(class, ϕs, n)
+	if class == 11
+		return upol_tbt_builder(ϕs, n)
+	else
+		return (exp(ϕs[1]) - exp(ϕs[2])) .* proj_tbt_builder(class, n)
+	end
+end
+
 function number_of_classes(flavour = META.ff :: FRAG_FLAVOUR)
 	if typeof(flavour) == CGMFR
 		return 10
@@ -265,6 +274,8 @@ function number_of_classes(flavour = META.ff :: FRAG_FLAVOUR)
 		return 3
 	elseif typeof(flavour) == UPOL
 		return 1
+	elseif typeof(flavour) == U11
+		return 11
 	elseif typeof(flavour) == O3
 		return 90
 	else
@@ -284,6 +295,12 @@ function fragment_to_normalized_tbt(frag::fragment; frag_flavour = META.ff, u_fl
 	end
 
 	if typeof(frag_flavour) == CGMFR
+		if n < 4
+			println("ERROR: Trying to do CGMFR, requiring 4 orbitals, while number of used orbitals is $n")
+			if frag.spin_orb == false
+				println("Try using spin-orbitals instead of normalized orbitals by setting spin_orb=true")
+			end
+		end
 		tbt = cgmfr_tbt_builder(frag.class, n)
 	elseif typeof(frag_flavour) == CSA
 		tbt = csa_tbt_builder(frag.cn, n)
@@ -294,7 +311,21 @@ function fragment_to_normalized_tbt(frag::fragment; frag_flavour = META.ff, u_fl
 	elseif typeof(frag_flavour) == UPOL
 		tbt = upol_tbt_builder(frag.cn[2:end], n)
 	elseif typeof(frag_flavour) == O3
+		if n < 4
+			println("ERROR: Trying to do O3, requiring 4 orbitals, while number of used orbitals is $n")
+			if frag.spin_orb == false
+				println("Try using spin-orbitals instead of normalized orbitals by setting spin_orb=true")
+			end
+		end
 		tbt = o3_tbt_builder(frag.class, n)
+	elseif typeof(frag_flavour) == U11
+		if n < 4
+			println("ERROR: Trying to do U11, requiring 4 orbitals, while number of used orbitals is $n")
+			if frag.spin_orb == false
+				println("Try using spin-orbitals instead of normalized orbitals by setting spin_orb=true")
+			end
+		end
+		tbt = u11_tbt_builder(frag.class, frag.cn[2:end] , n)
 	else
 		error("Trying to build normalized tbt from fragment with flavour $(frag.flavour), not implemented")
 	end
@@ -327,6 +358,8 @@ function frag_coeff_length(n, frag_flavour = META.ff)
 		return 1
 	elseif typeof(frag_flavour) == UPOL
 		return 5
+	elseif typeof(frag_flavour) == U11
+		return 5
 	elseif typeof(frag_flavour) == O3
 		return 1
 	else
@@ -346,6 +379,8 @@ function frag_num_zeros(n, frag_flavour = META.ff)
 	elseif typeof(frag_flavour) == GMFR
 		return 1
 	elseif typeof(frag_flavour) == UPOL
+		return 1
+	elseif typeof(frag_flavour) == U11
 		return 1
 	elseif typeof(frag_flavour) == O3
 		return 1

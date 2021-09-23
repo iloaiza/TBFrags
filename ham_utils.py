@@ -37,7 +37,7 @@ def get_spin(orb):
 
     return sp * sm + sz * sz - sz
 
-def get_mol(mol_name, basis='sto3g', geometry=1, run_ccsd=False, run_mp2=False):
+def get_mol(mol_name, basis='sto3g', geometry=1):
     '''
     Run pyscf on the specified molecule 
     '''
@@ -46,11 +46,11 @@ def get_mol(mol_name, basis='sto3g', geometry=1, run_ccsd=False, run_mp2=False):
     mol = run_pyscf(mol)
     return mol 
 
-def get_system(type, ferm = False, basis='sto3g', geometry=1, n_elec = False):
+def get_system(mol_name, ferm = False, basis='sto3g', geometry=1, n_elec = False):
     '''
     Obtain system from specified parameters
     '''
-    g = chooseType(type, geometry)
+    g = chooseType(mol_name, geometry)
     mol = MolecularData(g, basis, 1, 0)
     mol = run_pyscf(mol)
     ham = mol.get_molecular_hamiltonian()
