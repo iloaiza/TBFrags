@@ -19,7 +19,7 @@ const PLOT = true #do correlation plot, requires POST=true
 ## DEFAULT FLAVOURS
 const frag_flavour = "CGMFR" #default fragment flavour for type of fragments built
 const u_flavour = "MF-real"  #default unitary flavour for type of unitaries built
-const opt_flavour = "full-rank" #default type of optimization performed
+const opt_flavour = "greedy" #default type of optimization performed
 
 const real_tol = 1e-10 #tolerance for rounding expectation values and variances to just real component
 const neg_tol = 1e-14 #tolerance for setting negative values of variance to 0, avoids complex roots
