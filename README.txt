@@ -49,6 +49,8 @@ Available fragments (S_n's):
 
     - CSA: builds Cartan sub-algebra two-body polynomials for each fragment
 
+    - U11: builds unitary operator from linear phases combination of projectors (11 classes, class 11 = UPOL)
+
 
 Available unitary rotations (U_n's):
     - MF: mean-field rotations representing SU(n) group
@@ -62,12 +64,13 @@ julia:
     -HDF5 (for saving)
     -Plots, PyPlot (for plottling)
     -Suppressor (for suppressing unnecessary warnings)
+    -SparseArrays, Arpack and ExpmV: for efficient calculation and storage of wavefunctions and operators, only used for openfermion based vqe routiine (shift_grads.jl)
 python:
     -openfermion, pyscf, openfermionpyscf
 
 
 ######## INSTALLATION
-Requires installing julia packages (can be done by accessing the julia package manager in a julia session with ']', then writing: 'add Optim, PyCall, Einsum, HDF5, SharedArrays, Plots, PyPlot, Suppressor'). Can also be installed by running the "install.sh" script on a terminal.
+Requires installing julia packages (can be done by accessing the julia package manager in a julia session with ']', then writing: 'add Optim, PyCall, Einsum, HDF5, SharedArrays, Plots, PyPlot, Suppressor, SparseArrays, Arpack, ExpmV'). Can also be installed by running the "install.sh" script on a terminal.
 Also requires a python executable with installed packages:
 'pip install pyscf openfermion openfermionpyscf'
 

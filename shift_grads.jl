@@ -1,3 +1,5 @@
+using SparseArrays, Arpack, ExpmV
+
 #calculates gradients using parameter shift rules
 include("py_utils.jl")
 
@@ -47,8 +49,6 @@ function energy_grad(h_ferm, psi_hf, FRAGS, taus)
 
 	return E_grads
 end
-
-using SparseArrays, Arpack, ExpmV
 
 function vqe_routine(h_ferm :: PyObject, psi_hf :: PyObject, FRAGS; tau0 = Float64[], grad = true)
 	#converts h_ferm and psi_hf to sparse array and vector respectively, then performs VQE optimization
