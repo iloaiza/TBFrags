@@ -64,9 +64,9 @@ julia:
     -HDF5 (for saving)
     -Plots, PyPlot (for plottling)
     -Suppressor (for suppressing unnecessary warnings)
-    -SparseArrays, Arpack and ExpmV: for efficient calculation and storage of wavefunctions and operators, only used for openfermion based vqe routiine (shift_grads.jl)
+    -SparseArrays, Arpack and ExpmV: for efficient calculation and storage of wavefunctions and operators, only used for openfermion based vqe routine (shift_grads.jl)
 python:
-    -openfermion, pyscf, openfermionpyscf
+    -openfermion, pyscf, openfermionpyscf, tequila-basic
 
 
 ######## INSTALLATION
@@ -79,7 +79,7 @@ If running in a server, a python environment with openfermion can be installed w
 module load python/3.7
 virtualenv --system-site-packages venv
 source venv/bin/activate
-pip install openfermion pyscf openfermionpyscf
+pip install openfermion pyscf openfermionpyscf tequila-basic
 '''
 (name of python module should be changed depending on server module names)
 
