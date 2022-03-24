@@ -20,6 +20,9 @@ end
 struct CSA <: FRAG_FLAVOUR
 end
 
+struct CSASD <: FRAG_FLAVOUR
+end
+
 struct iCSA <: FRAG_FLAVOUR
 end
 
@@ -30,6 +33,12 @@ struct GMFR <: FRAG_FLAVOUR
 end
 
 struct UPOL <: FRAG_FLAVOUR
+end
+
+struct TBPOL <: FRAG_FLAVOUR
+end
+
+struct CCD <: FRAG_FLAVOUR
 end
 
 struct U11 <: FRAG_FLAVOUR
@@ -49,10 +58,16 @@ if frag_flavour == "CGMFR"
 	ff = CGMFR()
 elseif frag_flavour == "CSA"
 	ff = CSA()
+elseif frag_flavour == "CSASD"
+	ff = CSASD()
 elseif frag_flavour == "GMFR"
 	ff = GMFR()
 elseif frag_flavour == "UPOL"
 	ff = UPOL()
+elseif frag_flavour == "TBPOL"
+	ff = TBPOL()
+elseif frag_flavour == "CCD"
+	ff = CCD()
 elseif frag_flavour == "U11"
 	ff = U11()
 elseif frag_flavour == "O3"

@@ -13,6 +13,26 @@ def get_one_body_terms(H):
             one_body += FermionOperator(fw, val)
     return one_body
 
+def get_pure_one_body_terms(H):
+    '''
+    Return the one body terms in H
+    '''
+    one_body = FermionOperator.zero()
+    for fw, val in H.terms.items():
+        if len(fw) == 2:
+            one_body += FermionOperator(fw, val)
+    return one_body
+
+def get_pure_two_body_terms(H):
+    '''
+    Return the two body terms in H
+    '''
+    two_body = FermionOperator.zero()
+    for fw, val in H.terms.items():
+        if len(fw) == 4:
+            two_body += FermionOperator(fw, val)
+    return two_body
+
 def get_hf(n_spinorb, nelec):
     '''
     Return the hf wfs given number of electrons and orbitals
@@ -217,6 +237,9 @@ def get_spin_orbitals(H : FermionOperator):
                 n, term[0][0], term[1][0],
                 term[2][0], term[3][0]
             ])
+        elif len(term) == 2:
+            n = max([
+                n, term[0][0], term[1][0]])
     n += 1 
     return n
 
@@ -275,6 +298,54 @@ def get_two_body_tensor(H : FermionOperator, n = None):
                 term[2][0], term[3][0]
             ] = val
     return tbt 
+
+def get_obt(H : FermionOperator, n = None, spin_orb=False):
+    '''
+    Obtain the 2-rank tensor that represents one body interaction in H. 
+    In addition, simplify tensor assuming symmetry between alpha/beta coefficients
+    '''
+    # getting N^2 phy_tbt and then (N/2)^2 chem_tbt 
+    if n is None:
+        n = get_spin_orbitals(H)
+    
+    obt = np.zeros((n,n))
+    for term, val in H.terms.items():
+        if len(term) == 2:
+            #print("Term is {}".format(term))
+            if term[0][1] == 1 and term[1][1] == 0:
+                obt[term[0][0], term[1][0]] = val
+            elif term[1][1] == 1 and term[0][1] == 0:
+                obt[term[1][0], term[0][0]] = -val
+            else:
+                print("Warning, one-body operator has double creation/annihilation operators!")
+                quit()
+
+    if spin_orb:
+        return obt
+
+    # Spin-orbital to orbital 
+    n_orb = obt.shape[0]
+    n_orb = n_orb // 2
+
+    obt_red_uu = np.zeros((n_orb, n_orb))
+    obt_red_dd = np.zeros((n_orb, n_orb))
+    obt_red_ud = np.zeros((n_orb, n_orb))
+    obt_red_du = np.zeros((n_orb, n_orb))
+    for i in range(n_orb):
+        for j in range(n_orb):
+            obt_red_uu[i,j] = obt[2*i, 2*j]
+            obt_red_dd[i,j] = obt[2*i+1, 2*j+1]
+            obt_red_ud = obt[2*i, 2*j+1]
+            obt_red_du = obt[2*i+1, 2*j]
+
+    if np.sum(np.abs(obt_red_du)) + np.sum(np.abs(obt_red_ud)) != 0:
+        print("Warning, operator to one-body transformation ran with spin_orb=false, but spin-orbit couplings are not 0!")
+    if obt_red_uu != obt_red_dd:
+        print("Warning, operator to one-body transformation ran with spin_orb=false, but isn't symmetric to spin-flips")
+
+    obt = (obt_red_uu + obt_red_dd) / 2
+
+    return obt
 
 def get_chemist_tbt(H : FermionOperator, n = None, spin_orb=False):
     '''

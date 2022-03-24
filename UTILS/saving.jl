@@ -2,10 +2,14 @@
 #use @saving "name" var1 var2 to save in DATAFOLDER ("./" unless defined elsewhere) a "name.h5" file (with movement to .old if preexisting) "var1", "var2", ... values
 #use @loading "name" for automatic loading of all saved variables
 
+global SAVING_LOADED = true
+
 using HDF5
 if !(@isdefined(DATAFOLDER))
 	DATAFOLDER = "./"
 end
+
+println("Loading and saving in $DATAFOLDER")
 
 function stringSymbolSeparator(params,numparams=length(params))
 	paramsNames = String[]
@@ -18,6 +22,7 @@ function stringSymbolSeparator(params,numparams=length(params))
 end
 
 function oldfile(funcname::String)
+	#frees filename for saving, moves all old files to old+1
 	filename = DATAFOLDER*funcname*".h5"
 	if isfile(filename)
 		oldname = filename*".old"
@@ -36,6 +41,15 @@ function oldfile(funcname::String)
 		end
 		run(`mv -f $filename $filename.old`)
 		println("Moved file $filename to $oldname")
+	end
+end
+
+function file_space(funcname::String)
+	#erases filename to make space for save
+	filename = DATAFOLDER*funcname*".h5"
+	if isfile(filename)
+		run(`rm $filename`)
+		println("Removed file $filename for saving new file on top...")
 	end
 end
 
@@ -63,11 +77,12 @@ macro overwriting(funcname::String,params...)
 end
 
 function overwrite_xK(funcname::String,x0,K0)
+	file_space(funcname)
 	h5write(DATAFOLDER*funcname*".h5","numparams",2)
 	h5write(DATAFOLDER*funcname*".h5","paramsNames",["x0","K0"])
 	h5write(DATAFOLDER*funcname*".h5","x0",x0)
 	h5write(DATAFOLDER*funcname*".h5","K0",K0)
-	println("overwrite_xK debug message: Saved x0 and K0 in $funcname")
+	#println("overwrite_xK debug message: Saved x0 and K0 in $funcname")
 end
 
 macro loading(funcname::String,addname=false)

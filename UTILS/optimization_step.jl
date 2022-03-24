@@ -58,6 +58,82 @@ function full_rank_optimization(target, class_arr; x0=false, grad=false,
 	end
 end
 
+function relaxed_greedy_optimization(target, class_arr, u_prev=[], x_prev=[]; x0=false, grad=false,
+				 spin_orb=false, n = length(target[:,1,1,1]), frag_flavour=META.ff, u_flavour=META.uf)
+	num_frags = length(class_arr)
+	#x_prev: array of previous x, dimensions are [fcl, num_frags-1]. Includes previous coefficients for first guess
+	#u_arr: array of previous unitaries, dimensions are [u_num, num_frags-1]
+
+	function cost(x)
+		return relaxed_cost(x, target, class_arr, u_prev, x_prev[2:end, :]; 
+			n=n, spin_orb=spin_orb, frag_flavour=frag_flavour, u_flavour=u_flavour)
+	end
+
+	u_num = unitary_parameter_number(n, u_flavour)
+	fcl = frag_coeff_length(n, frag_flavour)
+	num_zeros = frag_num_zeros(n, frag_flavour)
+
+	
+	if x0 == false
+		#starting initial random condition for newest fragment, initialize frag.cn to zeros and u_params to [0,2π]
+		x0 = zeros(u_num + fcl)
+		x0[1+num_zeros:end] = 2π*rand(fcl+u_num-num_zeros)
+	end
+	
+	x0 = cat(x_prev[1,:], x0, dims=1)
+
+	if grad == false
+		return optimize(cost, x0, BFGS())
+	else
+		error("Gradient optimization not defined for relaxed-greedy optimization!")
+		#=####### This is a placeholder from full-rank gradient optimization
+		function grad!(storage, x)
+			return full_rank_gradient!(storage, x, target, class_arr, n,
+					 spin_orb=spin_orb, frag_flavour=frag_flavour, u_flavour=u_flavour)
+		end
+		return optimize(cost, grad!, x0, BFGS())
+		# =#
+	end
+end
+
+function relaxed_block_greedy_optimization(target, class_arr, u_prev=[], x_prev=[]; b_size = block_size, x0=false, grad=false,
+				 spin_orb=false, n = length(target[:,1,1,1]), frag_flavour=META.ff, u_flavour=META.uf)
+	num_frags = length(class_arr)
+	#x_prev: array of previous x, dimensions are [fcl, num_frags-b_size]. Includes previous coefficients for first guess
+	#u_arr: array of previous unitaries, dimensions are [u_num, num_frags-b_size]
+
+	function cost(x)
+		return relaxed_block_cost(x, target, class_arr, u_prev, x_prev[2:end, :]; 
+			b_size=b_size, n=n, spin_orb=spin_orb, frag_flavour=frag_flavour, u_flavour=u_flavour)
+	end
+
+	u_num = unitary_parameter_number(n, u_flavour)
+	fcl = frag_coeff_length(n, frag_flavour)
+	num_zeros = frag_num_zeros(n, frag_flavour)
+	
+	if x0 == false || x0 == []
+		#starting initial random condition, initialize frag.cn[1] to zeros, and frag.cn[2:end] (if exist) and u_params to [0,2π]
+		x0 = zeros(u_num+fcl, b_size)
+		x0[1+num_zeros:end,:] = 2π * rand(u_num+fcl-num_zeros, num_frags)
+		x0 = vcat(x0...)
+	end
+	
+	x0 = cat(x_prev[1,:], x0, dims=1)
+
+	if grad == false
+		return optimize(cost, x0, BFGS())
+	else
+		error("Gradient optimization not defined for relaxed-block-greedy optimization!")
+		#=####### This is a placeholder from full-rank gradient optimization
+		function grad!(storage, x)
+			return full_rank_gradient!(storage, x, target, class_arr, n,
+					 spin_orb=spin_orb, frag_flavour=frag_flavour, u_flavour=u_flavour)
+		end
+		return optimize(cost, grad!, x0, BFGS())
+		# =#
+	end
+end
+
 function classes_normalizer(frag_flavour = META.ff)
 	num_classes = number_of_classes(frag_flavour)
 	NORMS = zeros(num_classes)
@@ -150,5 +226,36 @@ function orthogonal_greedy_step_optimization(target, class, frags_arr;
 						 spin_orb=spin_orb, frag_flavour=frag_flavour, u_flavour=u_flavour)
 		end
 		return optimize(cost, grad!, x0, BFGS())
+	end
+end
+
+function greedy_step_SD_optimization(ob_target, tb_target, class; spin_orb = false,
+				 grad=false, x0=false, n = size(ob_target)[1], frag_flavour=META.ff, u_flavour=META.uf)
+	u_num = unitary_parameter_number(n)
+	fcl = frag_coeff_length(n, frag_flavour)
+	num_zeros = frag_num_zeros(n, frag_flavour)
+
+	if x0 == false
+		#starting initial random condition, initialize frag.cn to zeros and u_params to [0,2π]
+		x0 = zeros(u_num + fcl)
+		x0[1+num_zeros:end] = 2π*rand(fcl+u_num-num_zeros)
+	end
+
+	function cost(x)
+		return SD_parameter_cost(x, ob_target, tb_target, class, n=n,
+				 spin_orb=spin_orb, frag_flavour=frag_flavour, u_flavour=u_flavour)
+	end
+
+	if grad == false
+		return optimize(cost, x0, BFGS())
+	else
+		error("GRADIENT NOT IMPLEMENTED FOR SD OPTIMIZATION")
+		#=
+		function grad!(storage, x)
+			return parameter_gradient!(storage, x, target, class, n,
+					 spin_orb=spin_orb, frag_flavour=frag_flavour, u_flavour=u_flavour)
+		end
+		return optimize(cost, grad!, x0, BFGS())
+		# =#
 	end
 end

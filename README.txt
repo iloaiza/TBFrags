@@ -30,6 +30,8 @@ SAVENAME explained in "SAVING RESULTS AND CALCULATION RESTARTS" last section of 
 Available optimizations (for obtaining decomposition) (parenthesis shows alias for quick referencing):
     - greedy (g): greedy optimization, obtains each fragment as best guess of remaining operator
 
+    - relaxed-greedy (rg): greedy optimization that allows optimization of main coefficient (c_n) of previously found fragments. Uses classes of previous fragments, along with unitary rotations and any other coefficient which are not multiplicative constant c_n
+
     - full-rank (fr): performs a full-rank optimization iteratively. It first choses the first fragment in a greedy way, and uses this fragment as an initial condition for the two-fragment decomposition (while allowing the first fragment to change). This goes on, optimizing all n+1 fragments at each step while using the previously optimized n as an initial condition
 
     - full-rank-non-iterative (frni): performs the full-rank optimization directly with all fragments. If fragment flavour has more than 1 class, the classes of the fragments are generated randomly in run.jl as "class_train" variable
@@ -48,6 +50,8 @@ Available fragments (S_n's):
     - O3: builds operators with 3 eigenvalues ({-1,0,1}+const) by using p1+p2 and p1-p2 for p1, p2 in all 10 projector classes
 
     - CSA: builds Cartan sub-algebra two-body polynomials for each fragment
+
+    - iCSA: like CSA, but also allows complex generators for anti-hermitian components (e.g. in1n2)
 
     - U11: builds unitary operator from linear phases combination of projectors (11 classes, class 11 = UPOL)
 
@@ -88,5 +92,4 @@ The python virtual environment should then be activated before running run.jl by
 
 
 ######## SAVING RESULTS AND CALCULATION RESTARTS
-If calculation restarts need to be implemented, make sure the verbose=true option is marked. A quick savefile can be made by starting a julia session, loading the saving.jl module with 'include("saving.jl")', copy-pasting the x0 and K0 values of the verbose, and then writing '@saving "SAVENAME" x0 K0', where SAVENAME is the name of the savefile (requires writing it between "", e.g. '@saving "H2" x0 K0'). Then when launching the new calculation, just run using 'julia -p N run.jl mol_name SAVENAME' will load the x0 and K0 values for restarting calculation with some initial conditions.
-### to implement: automatic saves with saving=true option in config file using overwrite function in saving.jl
+When launching the new calculation, just run using 'julia -p N run.jl mol_name SAVENAME' will load the x0 and K0 values for restarting calculation with some initial conditions. Use option "saving = true" to save each step of optimization for easy restarts

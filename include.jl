@@ -3,16 +3,24 @@
 using LinearAlgebra, Einsum, Optim, SharedArrays
 
 if !(@isdefined CONFIG_LOADED) #only include config file one time so constants can be later redefined
-	include("config.jl")
+	include("UTILS/config.jl")
 end
-include("structs.jl")
-include("unitaries.jl")
-include("fragments.jl")
-include("cost.jl")
-include("grads.jl")
-include("optimization_step.jl")
-include("optimization_driver.jl")
 
-if saving == true
-	include("saving.jl")
+if SUPPRESSOR == true
+	using Suppressor
 end
+
+if !(@isdefined SAVING_LOADED) #only include saving file one time
+	include("UTILS/saving.jl")
+end
+
+include("UTILS/structs.jl")
+include("UTILS/unitaries.jl")
+include("UTILS/fragments.jl")
+include("UTILS/cost.jl")
+include("UTILS/grads.jl")
+include("UTILS/optimization_step.jl")
+include("UTILS/optimization_driver.jl")
+include("UTILS/py_utils.jl")
+include("UTILS/shift_grads.jl")
+include("UTILS/tq_utils.jl")

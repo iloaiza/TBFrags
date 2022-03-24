@@ -91,6 +91,7 @@ def get_ccsd_op_from_amp(ccsd_amp):
             (int(i), 0), (int(j), 0)
         )
         op += FermionOperator(term=term, coefficient=ccsd_amp[i, j, a, b])
+        print((term,ccsd_amp[i,j,a,b]))
     return op
 
 def get_ccsd_op(mol):

@@ -113,6 +113,18 @@ def chooseType(typeHam, geometries):
             ['H', [0, 0, -geometries]],
             ['H', [0, 0, geometries]]
         ]
+    elif typeHam == 'h4':
+        angle1 = math.radians(geometries/2)
+        angle2 = math.radians(90-geometries/2)
+        R = 1.737236
+        hor_val = 2*R*math.sin(angle1)
+        ver_val = 2*R*math.sin(angle2)
+        molData = [
+            ['H', [0, 0, 0]],
+            ['H', [hor_val, 0, 0]],
+            ['H', [0, ver_val, 0]],
+            ['H', [hor_val, ver_val, 0]]
+        ]
     elif typeHam == 'nh3':
     # Is there a more direct way of making three vectors with specific mutual angle?
         bondAngle = 107
