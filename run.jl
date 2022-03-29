@@ -80,9 +80,18 @@ if in_block(opt_flavour)
 	@show block_size
 end
 
-global NAME = "ham_" * mol_name * "_" * frag_flavour * "_" * u_flavour * "_" * opt_flavour
-
-tbt, h_ferm, num_elecs = obtain_tbt(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
+if include_singles == false
+	println("Using pure two-body tensor")
+	global NAME = "ham_" * mol_name * "_" * frag_flavour * "_" * u_flavour * "_" * opt_flavour
+	tbt, h_ferm, num_elecs = obtain_tbt(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
+else
+	println("Including one-body terms in two-body tensor")
+	if spin_orb == false
+		error("Trying to run for one and two body terms with spin_orb = false!")
+	end
+	global NAME = "ham_SD_" * mol_name * "_" * frag_flavour * "_" * u_flavour * "_" * opt_flavour
+	tbt, h_ferm, num_elecs = full_ham_tbt(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
+end
 
 if opt_flavour == "full-rank" || opt_flavour == "fr"
 	@time FRAGS = full_rank_driver(tbt, decomp_tol, reps = reps, α_max=α_max, grad=grad, verbose=verbose, x0=x0, K0=K0, spin_orb=spin_orb)

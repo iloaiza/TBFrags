@@ -10,13 +10,15 @@ if SUPPRESSOR == true
 	using Suppressor
 end
 
-if !(@isdefined SAVING_LOADED) #only include saving file one time
+if !(@isdefined SAVING_LOADED) && saving == true #only include saving file one time if saving option is on
 	include("UTILS/saving.jl")
+	global SAVING_LOADED = true
 end
 
 include("UTILS/structs.jl")
 include("UTILS/unitaries.jl")
 include("UTILS/fragments.jl")
+include("UTILS/tensor_utils.jl")
 include("UTILS/cost.jl")
 include("UTILS/grads.jl")
 include("UTILS/optimization_step.jl")

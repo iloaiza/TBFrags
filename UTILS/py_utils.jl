@@ -53,9 +53,15 @@ function full_ham_tbt(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometr
 	end
 
 	tbt = fermionic.get_chemist_tbt(h_ferm, spin_orb=spin_orb)
-	ob_op = fermionic.get_pure_one_body_terms(h_ferm)
-	obt = fermionic.get_obt(h_ferm, spin_orb=spin_orb)
+    #obt = fermionic.get_obt(h1b, spin_orb=spin_orb)
+	#ob_op = fermionic.get_pure_one_body_terms(h_ferm)
+	#obt += fermionic.get_chemist_obt_correction(h_ferm, spin_orb=spin_orb)
+	h1b = h_ferm - tbt_to_ferm(tbt, spin_orb)
+    h1b = of_simplify(h1b)
+	obt = fermionic.get_obt(h1b, spin_orb=spin_orb)
 	tbt += obt_to_tbt(obt)
+
+	#@show of_simplify(h_ferm - tbt_to_ferm(tbt,spin_orb))
 
 	if n_elec == false
 		return tbt, h_ferm
@@ -64,7 +70,7 @@ function full_ham_tbt(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometr
 	end
 end
 
-function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1, n_elec=false)
+function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1, n_elec=false, debug=true, tiny=1e-6)
 	if n_elec == false	
 		h_ferm = obtain_hamiltonian(mol_name, basis=basis, ferm=ferm, geometry=geometry)
 	else
@@ -72,8 +78,11 @@ function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1
 	end
 
 	tbt = fermionic.get_chemist_tbt(h_ferm, spin_orb=spin_orb)
-	ob_op = of_simplify(h_ferm - tbt_to_ferm(tbt, spin_orb))
-	obt = fermionic.get_obt(ob_op, spin_orb=spin_orb)
+	h1b = h_ferm - tbt_to_ferm(tbt, spin_orb)
+    h1b = of_simplify(h1b)
+	obt = fermionic.get_obt(h1b, spin_orb=spin_orb)
+	
+	#@show of_simplify(h_ferm - tbt_to_ferm(tbt,spin_orb) - obt_to_ferm(obt,spin_orb))
 
 	if n_elec == false
 		return obt, tbt, h_ferm
