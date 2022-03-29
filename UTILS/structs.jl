@@ -44,6 +44,12 @@ end
 struct U11 <: FRAG_FLAVOUR
 end
 
+struct U11R <: FRAG_FLAVOUR
+end
+
+struct TBTON <: FRAG_FLAVOUR
+end
+
 struct O3 <: FRAG_FLAVOUR
 end
 
@@ -70,6 +76,10 @@ elseif frag_flavour == "CCD"
 	ff = CCD()
 elseif frag_flavour == "U11"
 	ff = U11()
+elseif frag_flavour == "U11R"
+	ff = U11R()
+elseif frag_flavour == "TBTON"
+	ff = TBTON()
 elseif frag_flavour == "O3"
 	ff = O3()
 elseif frag_flavour == "iCSA"
@@ -78,7 +88,7 @@ else
 	error("Trying to build meta frag_flavour for fast compilation for $frag_flavour, not defined in structs.jl!")
 end
 
-if u_flavour == "MF-real" || u_flavour == "MFR"
+if u_flavour == "MF-real" || u_flavour == "MFR" || u_flavour == "MF_real"
 	uf = MF_real()
 elseif u_flavour == "MF"
 	uf = MF()

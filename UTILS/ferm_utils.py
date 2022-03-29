@@ -340,7 +340,7 @@ def get_obt(H : FermionOperator, n = None, spin_orb=False):
 
     if np.sum(np.abs(obt_red_du)) + np.sum(np.abs(obt_red_ud)) != 0:
         print("Warning, operator to one-body transformation ran with spin_orb=false, but spin-orbit couplings are not 0!")
-    if obt_red_uu != obt_red_dd:
+    if obt_red_uu.all != obt_red_dd.all:
         print("Warning, operator to one-body transformation ran with spin_orb=false, but isn't symmetric to spin-flips")
 
     obt = (obt_red_uu + obt_red_dd) / 2
@@ -370,6 +370,29 @@ def get_chemist_tbt(H : FermionOperator, n = None, spin_orb=False):
                     beta_indices, beta_indices)]
 
     return chem_tbt
+
+def get_chemist_obt_correction(H : FermionOperator, n = None, spin_orb=False):
+    '''
+    Obtain the 2-rank tensor that represents one body interaction correction to H from changing between physicist and chemist ordering 
+    In chemist ordering a^ a a^ a. 
+    In addition, simplify tensor assuming symmetry between alpha/beta coefficients
+    '''
+    # getting N^4 phy_tbt and then (N/2)^4 chem_tbt 
+    phy_tbt = get_two_body_tensor(H, n)
+    n_orb = phy_tbt.shape[0]
+    chem_obt = np.zeros((n_orb,n_orb))
+    for i in range(n_orb):
+    	for j in range(n_orb):
+    		for k in range(n_orb):
+    			chem_obt[i,j] -= phy_tbt[i,k,j,k]
+
+    if spin_orb:
+        return chem_obt
+    else:
+        println("Can't get one body correction for spin_orb = False")
+        quit()
+
+    return chem_obt
 
 def separate_diagonal_tbt(chem_tbt):
     '''

@@ -351,6 +351,34 @@ function u11_tbt_builder(class, ϕs, n)
 	end
 end
 
+function tb_to_norm_tbt_builder(ϕs, n)
+	#two-body, two-orbital normalized polynomial. Comes from unitary phases class 11 real (U+U') ansatz
+	tbt = zeros(n,n,n,n)
+	c1 = cos(ϕs[1])
+	c2 = cos(ϕs[2])
+	c3 = cos(ϕs[3])
+	c4 = cos(ϕs[4])
+
+	tbt[1,1,1,1] = c3-c4
+	tbt[2,2,2,2] = c2-c4
+	tbt[1,1,2,2] = 0.5*(c1+c4-c2-c3)
+	tbt[2,2,1,1] = 0.5*(c1+c4-c2-c3)
+
+	return tbt
+end
+
+function u11r_tbt_builder(class, ϕs, n)
+	#classes 1-5 correspond to 6-10 reflections, class 6 is unitarized two-body polynomial
+	if class == 6
+		return tbnorm_tbt_builder(ϕs, n)
+	elseif class <= 5
+		return cgmfr_tbt_builder(class+5, n)
+	else
+		error("Trying to build u11 class")
+	end
+end
+
+
 function ccd_tbt_builder(n)
 	tbt = zeros(Complex{Float64},n,n,n,n)
 	tbt[1,2,3,4] = 0.5im
@@ -381,6 +409,10 @@ function number_of_classes(flavour = META.ff :: FRAG_FLAVOUR)
 		return 90
 	elseif typeof(flavour) == TBPOL
 		return 2
+	elseif typeof(flavour) == U11R
+		return 6
+	elseif typeof(flavour) == TBTON
+		return 1
 	elseif typeof(flavour) == CCD
 		return 1
 	else
@@ -444,6 +476,16 @@ function fragment_to_normalized_cartan_tbt(frag::fragment; frag_flavour = META.f
 			end
 		end
 		tbt = u11_tbt_builder(frag.class, frag.cn[2:end] , n)
+	elseif typeof(frag_flavour) == U11R
+		if n < 4
+			println("ERROR: Trying to do U11R, requiring 4 orbitals, while number of used orbitals is $n")
+			if frag.spin_orb == false
+				println("Try using spin-orbitals instead of normalized orbitals by setting spin_orb=true")
+			end
+		end
+		tbt = u11r_tbt_builder(frag.class, frag.cn[2:end] , n)
+	elseif typeof(frag_flavour) == TBTON
+		tbt = tb_to_norm_tbt_builder(frag.cn[2:end] , n)
 	else
 		error("Trying to build normalized tbt from fragment with flavour $(frag.flavour), not implemented")
 	end
@@ -512,6 +554,10 @@ function frag_coeff_length(n, frag_flavour = META.ff)
 		return 5
 	elseif typeof(frag_flavour) == U11
 		return 5
+	elseif typeof(frag_flavour) == U11R
+		return 5
+	elseif typeof(frag_flavour) == TBTON
+		return 5
 	elseif typeof(frag_flavour) == O3
 		return 1
 	elseif typeof(frag_flavour) == TBPOL
@@ -549,24 +595,4 @@ function frag_num_zeros(n, frag_flavour = META.ff)
 	else
 		error("Trying to get number of coefficients to be initialized in 0 for fragment flavour $frag_flavour, not defined!")
 	end
-end
-
-function obt_to_tbt(obt)
-	#transform one-body tensor into two-body tensor
-	
-    Dobt, Uobt = eigen(obt)
-    #obt ≡ Uobt * Diagonal(Dobt) * (Uobt')
-
-    n = size(obt)[1]
-
-    tbt = zeros(n,n,n,n)
-    for i in 1:n
-        tbt[i,i,i,i] = Dobt[i]
-    end
-
-    rotated_tbt = zeros(n,n,n,n)
-
-    @einsum rotated_tbt[a,b,c,d] = Uobt[a,l] * Uobt[b,l] * Uobt[c,m] * Uobt[d,m] * tbt[l,l,m,m]
-
-    return rotated_tbt
 end

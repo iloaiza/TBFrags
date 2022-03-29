@@ -39,7 +39,7 @@ SAVENAME explained in "SAVING RESULTS AND CALCULATION RESTARTS" last section of 
 Available optimizations (for obtaining decomposition) (parenthesis shows alias for quick referencing):
     - greedy (g): greedy optimization, obtains each fragment as best guess of remaining operator
 
-    - relaxed-greedy (rg): greedy optimization that allows optimization of main coefficient (c_n) of previously found fragments. Uses classes of previous fragments, along with unitary rotations and any other coefficient which are not multiplicative constant c_n
+    - relaxed-greedy (rg): greedy optimization that allows optimization of main coefficient (c_n) of previously found fragments. Uses classes of previous fragments, along with unitary rotations and any other coefficient which are not multiplicative constant c_n (not useful for CSA-type decompositions)
 
     - full-rank (fr): performs a full-rank optimization iteratively. It first choses the first fragment in a greedy way, and uses this fragment as an initial condition for the two-fragment decomposition (while allowing the first fragment to change). This goes on, optimizing all n+1 fragments at each step while using the previously optimized n as an initial condition
 
@@ -63,6 +63,10 @@ Available fragments (S_n's):
     - iCSA: like CSA, but also allows complex generators for anti-hermitian components (e.g. in1n2)
 
     - U11: builds unitary operator from linear phases combination of projectors (11 classes, class 11 = UPOL)
+
+    - TBTON: normalized 2-body, 2-orbital polynomial based on real unitary phases (U+U') for 11th class (i.e. UPOL)
+
+    - U11R: builds unitary operator from linear phases combination of projectors with real constraint (i.e. U11+U11'). This corresponds to TBTON plus the last five reflection classes (which correspond to 3 and 4-orbital classes)
 
 
 Available unitary rotations (U_n's):
