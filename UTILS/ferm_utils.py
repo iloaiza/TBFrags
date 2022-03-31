@@ -299,7 +299,7 @@ def get_two_body_tensor(H : FermionOperator, n = None):
             ] = val
     return tbt 
 
-def get_obt(H : FermionOperator, n = None, spin_orb=False):
+def get_obt(H : FermionOperator, n = None, spin_orb=False, tiny=1e-12):
     '''
     Obtain the 2-rank tensor that represents one body interaction in H. 
     In addition, simplify tensor assuming symmetry between alpha/beta coefficients
@@ -340,8 +340,9 @@ def get_obt(H : FermionOperator, n = None, spin_orb=False):
 
     if np.sum(np.abs(obt_red_du)) + np.sum(np.abs(obt_red_ud)) != 0:
         print("Warning, operator to one-body transformation ran with spin_orb=false, but spin-orbit couplings are not 0!")
-    if obt_red_uu.all != obt_red_dd.all:
+    if np.sum(np.abs(obt_red_uu - obt_red_dd)) > tiny:
         print("Warning, operator to one-body transformation ran with spin_orb=false, but isn't symmetric to spin-flips")
+        print("obt_uu - obt_dd = {}".format(obt_red_uu - obt_red_dd))
 
     obt = (obt_red_uu + obt_red_dd) / 2
 
