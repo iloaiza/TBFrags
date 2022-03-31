@@ -21,6 +21,7 @@ function obt_to_tbt(obt)
 end
 
 function obt_to_tbt_orbitals(obt)
+    println("Warning, obt cannot be converted to tbt using orbitals: (ααββ) and (ββαα) are zero for obt but equal to (αααα) and (ββββ) for orbital tbt")
     n = size(obt)[1]
     D, U = eigen(obt)
 
@@ -67,7 +68,6 @@ function obt_to_tbt_orbitals(obt)
     @show tbt_uu[3,4,:,:]
     @show sum(abs.(tbt_test - tbt_uu))
 
-    hgfhkdsvk
     tbt_so = tbt_uu + tbt_dd
 
     #=
