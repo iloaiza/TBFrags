@@ -16,21 +16,21 @@ Then calculates L1 norms with naive Pauli, and two different flavours of anticom
 
 ## Two-body Hamiltonian decomposition
 Run in bash:
-'julia -p N run.jl mol_name'
+'julia -p N H_DECOMP.jl mol_name'
 where N is the number of processors for parallel processing, and mol_name is the name of molecule (e.g. h2).
 Check run.jl and config.jl for more arguments/options
 e.g.:
-'julia run.jl lih f full-rank-non-iterative CSA MFR 8'
+'julia H_DECOMP.jl lih f full-rank-non-iterative CSA MFR 8'
     options meaning:
         - f (abbreviation for false, both can be used): doesn't load initial conditions for restarted calculation
         - full-rank-non-iterative (can be written as just frni): full-rank optimization starting directly with alpha_max fragments
         - CSA: type of fragment corresponding to CSA element (i.e. 2nd degree polynomial of orbitals)
         - MFR: (can be written as MF-real as well) real mean-field rotations pertaining to SO(n) group
         - 8: maximum number of fragments α_max. For frni optimizations it's the used number of fragments
-'julia -p 5 run.jl lih' -> runs lih in 5 processors. Default optimization, fragment, and unitary flavours, as well as default α_max, are shown in config.jl under the names opt_flavour, frag_flavour, u_flavour, and α_max.
+'julia -p 5 H_DECOMP.jl lih' -> runs lih in 5 processors. Default optimization, fragment, and unitary flavours, as well as default α_max, are shown in config.jl under the names opt_flavour, frag_flavour, u_flavour, and α_max.
 
 Most general case, we have
-'julia -p N run.jl mol_name SAVENAME opt_flavour frag_flavour u_flavour α_max'
+'julia -p N H_DECOMP.jl mol_name SAVENAME opt_flavour frag_flavour u_flavour α_max'
 SAVENAME explained in "SAVING RESULTS AND CALCULATION RESTARTS" last section of this file.
 
 ## VQE routines: check vqe drivers...
@@ -87,9 +87,10 @@ python:
 
 
 ######## INSTALLATION
-Requires installing julia packages (can be done by accessing the julia package manager in a julia session with ']', then writing: 'add Optim, PyCall, Einsum, HDF5, SharedArrays, Plots, PyPlot, Suppressor, SparseArrays, Arpack, ExpmV'). Can also be installed by running the "install.sh" script on a terminal.
-Also requires a python executable with installed packages:
-'pip install pyscf openfermion openfermionpyscf'
+Execute install.sh in a terminal
+Requires installing julia packages (can be done by accessing the julia package manager in a julia session with ']', then writing: 'add Optim, PyCall, Einsum, HDF5, SharedArrays, Plots, PyPlot, Suppressor, SparseArrays, Arpack, ExpmV'). Can also be installed by running the "install.sh" script on a terminal, set PY_INSTALL to true(false) to do(not) install python environment along with julia packages.
+Requires a python executable with installed packages:
+'pip install pyscf openfermion openfermionpyscf tequila-basic'
 
 If running in a server, a python environment with openfermion can be installed with: (will create "venv" folder with installation in current directory)
 '''
