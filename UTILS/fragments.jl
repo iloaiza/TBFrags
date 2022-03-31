@@ -370,7 +370,7 @@ end
 function u11r_tbt_builder(class, ϕs, n)
 	#classes 1-5 correspond to 6-10 reflections, class 6 is unitarized two-body polynomial
 	if class == 6
-		return tbnorm_tbt_builder(ϕs, n)
+		return tb_to_norm_tbt_builder(ϕs, n)
 	elseif class <= 5
 		return cgmfr_tbt_builder(class+5, n)
 	else
@@ -424,8 +424,9 @@ function number_of_classes(flavour :: String)
 	return number_of_classes(eval(Meta.parse(flavour*"()")))
 end
 
-function fragment_to_normalized_cartan_tbt(frag::fragment; frag_flavour = META.ff, u_flavour=META.uf)
+function fragment_to_normalized_cartan_tbt(frag::fragment; frag_flavour = META.ff)
 	#returns obt, tbt for CSASD, otherwise just returns tbt
+	#doesn't consider unitary rotation part, returns just two-body tensor of Cartan polynomial
 	if frag.spin_orb
 		n = frag.n
 	else
@@ -505,7 +506,7 @@ function fragment_to_normalized_tbt(frag::fragment; frag_flavour = META.ff, u_fl
 		n = Int(frag.n/2)
 	end
 
-	tbt = fragment_to_normalized_cartan_tbt(frag, frag_flavour = frag_flavour, u_flavour=u_flavour)
+	tbt = fragment_to_normalized_cartan_tbt(frag, frag_flavour = frag_flavour)
 
 	if typeof(frag_flavour) == CCD
 		#CCD default tbt is not a Cartan polynomial, requires generalized rotation
@@ -585,6 +586,10 @@ function frag_num_zeros(n, frag_flavour = META.ff)
 	elseif typeof(frag_flavour) == UPOL
 		return 1
 	elseif typeof(frag_flavour) == U11
+		return 1
+	elseif typeof(frag_flavour) == U11R
+		return 1
+	elseif typeof(frag_flavour) == TBTON
 		return 1
 	elseif typeof(frag_flavour) == O3
 		return 1

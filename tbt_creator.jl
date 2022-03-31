@@ -3,29 +3,27 @@
 
 #CODE DRIVER FOR EXECUTION
 using Distributed
-include("config.jl")
+include("UTILS/config.jl")
 
-#ARGS = [1=mol_name, 2=amps_type, 3=geometry]
-args_len = length(ARGS)
+#ARGS = [1=mol_name]
+
 const mol_name = ARGS[1]
-const amps_type = ARGS[2]
-const geometry = parse(Float64,ARGS[3])
 include("include.jl")
-include("py_utils.jl")
-include("shift_grads.jl")
-include("tq_utils.jl")
 
 println("Starting tequila routine with:")
 @show mol_name
 @show basis
 @show geometry 
-@show transformation
-@show amps_type
 
-Hccsd_tq, tbt_tq, molecule = tq_obtain_system(mol_name, geometry, amps_type, transformation)
+if include_singles == true
+	println("Creating tbt with one and two-body terms")
+	NAME = "TBT_SD_"*mol_name*".h5"
+	tbt, h_ferm, num_elecs = full_ham_tbt(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
+else
+	println("Creating tbt with only two-body terms")
+	NAME = "TBT_D_"*mol_name*".h5"
+	tbt, h_ferm, num_elecs = obtain_tbt(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
+end
 
-tbt = tbt_tq
-
-NAME = "TBT_"*mol_name*"_"*amps_type*"_"*string(round(geometry,digits=3))*".h5"
-h5write(NAME,"tbt",tbt)
+h5write(DATAFOLDER*NAME,"tbt",tbt)
 println("""Saved tbt as "$NAME".""")

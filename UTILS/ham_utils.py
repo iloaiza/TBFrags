@@ -86,6 +86,11 @@ def chooseType(typeHam, geometries):
             ['H', [0, 0, 0]],
             ['H', [0, 0, geometries]]
         ]
+    elif typeHam == 'n2':
+        molData = [
+            ['N', [0, 0, 0]],
+            ['N', [0, 0, geometries]]
+        ]
     elif typeHam == 'lih':
         molData = [
             ['Li', [0, 0, 0]],

@@ -82,7 +82,7 @@ end
 
 if include_singles == false
 	println("Using pure two-body tensor")
-	global NAME = "ham_" * mol_name * "_" * frag_flavour * "_" * u_flavour * "_" * opt_flavour
+	global NAME = "ham_D_" * mol_name * "_" * frag_flavour * "_" * u_flavour * "_" * opt_flavour
 	tbt, h_ferm, num_elecs = obtain_tbt(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
 else
 	println("Including one-body terms in two-body tensor")

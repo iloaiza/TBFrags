@@ -141,8 +141,8 @@ function relaxed_greedy_driver(target, decomp_tol; reps = 1,
 		end
 	end
 
-	U_PREV = SharedArray(zeros(u_num, tot_reps))
-	X_PREV = SharedArray(zeros(fcl, tot_reps))
+	U_PREV = SharedArray(zeros(u_num, α_max))
+	X_PREV = SharedArray(zeros(fcl, α_max))
 	if length(K0) != 0
 		curr_tbt = target .* 0
 		println("Initial conditions found")
@@ -176,7 +176,7 @@ function relaxed_greedy_driver(target, decomp_tol; reps = 1,
 	x0_tot = copy(x0)
 	K0_tot = copy(K0)
 	FCost = SharedArray(zeros(tot_reps))
-	X_ARR = SharedArray(zeros(tot_reps, xsize + tot_reps - 1))
+	X_ARR = SharedArray(zeros(tot_reps, xsize + α_max - 1))
 	println("Starting two-body tensor cost is $cost")
 	while cost > decomp_tol && α <= α_max
 		println("Starting parallel calculation for fragment number $α")

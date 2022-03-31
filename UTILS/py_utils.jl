@@ -14,6 +14,7 @@ fermionic = pyimport("ferm_utils")
 mp2 = pyimport("mp2_utils")
 qbit = pyimport("qubit_utils")
 antic = pyimport("anti_commuting")
+car2lcu = pyimport("car2lcu_utils")
 
 of_simplify(OP) = of.reverse_jordan_wigner(of.jordan_wigner(OP))
 
@@ -43,7 +44,7 @@ end
 
 function full_ham_tbt(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1, n_elec=false)
 	if spin_orb == false
-		println("Warning, spin_orb marked as false, one-body routines might malfunction...")
+		error("Spin_orb marked as false, can't combine one-body tensor into two-body tensor. Try using obtain_SD instead")
 	end
 
 	if n_elec == false	
@@ -53,15 +54,20 @@ function full_ham_tbt(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometr
 	end
 
 	tbt = fermionic.get_chemist_tbt(h_ferm, spin_orb=spin_orb)
-    #obt = fermionic.get_obt(h1b, spin_orb=spin_orb)
-	#ob_op = fermionic.get_pure_one_body_terms(h_ferm)
+
+	# BUILD OBT USING CHEMIST CORRECTION, SMALL INACCURACIES APPEAR
+    #obt = fermionic.get_obt(h_ferm, spin_orb=spin_orb)
 	#obt += fermionic.get_chemist_obt_correction(h_ferm, spin_orb=spin_orb)
+
+	# BUILD OBT FROM DIFFERENCE OF FERMIONIC HAMILTONIAN WITH TWO-BODY CHEMIST OPERATOR, INACCURACIES ARE A LOT SMALLER
 	h1b = h_ferm - tbt_to_ferm(tbt, spin_orb)
     h1b = of_simplify(h1b)
 	obt = fermionic.get_obt(h1b, spin_orb=spin_orb)
+
 	tbt += obt_to_tbt(obt)
 
 	#@show of_simplify(h_ferm - tbt_to_ferm(tbt,spin_orb))
+	
 
 	if n_elec == false
 		return tbt, h_ferm
@@ -70,7 +76,7 @@ function full_ham_tbt(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometr
 	end
 end
 
-function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1, n_elec=false, debug=true, tiny=1e-6)
+function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1, n_elec=false)
 	if n_elec == false	
 		h_ferm = obtain_hamiltonian(mol_name, basis=basis, ferm=ferm, geometry=geometry)
 	else
@@ -82,7 +88,7 @@ function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1
     h1b = of_simplify(h1b)
 	obt = fermionic.get_obt(h1b, spin_orb=spin_orb)
 	
-	#@show of_simplify(h_ferm - tbt_to_ferm(tbt,spin_orb) - obt_to_ferm(obt,spin_orb))
+	@show of_simplify(h_ferm - tbt_to_ferm(tbt,spin_orb) - obt_to_ferm(obt,spin_orb))
 
 	if n_elec == false
 		return obt, tbt, h_ferm
