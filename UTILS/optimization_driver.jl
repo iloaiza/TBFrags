@@ -4,8 +4,17 @@ function greedy_driver(target, decomp_tol; reps = 1,
 	frag_flavour = META.ff, u_flavour=META.uf,
 	x0 = Float64[], K0 = Int64[], saving=saving,
 	f_name = NAME)
+	
+	if typeof(target) <: Tuple
+		if singles_family(frag_flavour)
+			n = size(target[1])[1]
+		else
+			error("Got Tuple for target tensors, but frag_flavour method $frag_flavour does not include singles!")
+		end
+	else
+		n = size(target)[1]
+	end
 
-	n = length(target[:,1,1,1])
 	if spin_orb
 		n_qubit = n
 	else
@@ -69,7 +78,7 @@ function greedy_driver(target, decomp_tol; reps = 1,
 		t00 = time()
 		@sync @distributed for idx in 1:tot_reps
 			k = K_map[idx]
-			sol = greedy_step_optimization(target-curr_tbt, k, frag_flavour=frag_flavour,
+			sol = greedy_step_optimization(target .- curr_tbt, k, frag_flavour=frag_flavour,
 								 u_flavour=u_flavour, grad=grad, spin_orb=spin_orb, n = n)
 			FCost[idx] = sol.minimum
 			X_ARR[idx,:] .= sol.minimizer
@@ -114,7 +123,18 @@ function relaxed_greedy_driver(target, decomp_tol; reps = 1,
 	frag_flavour = META.ff, u_flavour=META.uf,
 	x0 = Float64[], K0 = Int64[], saving=saving,
 	f_name = NAME)
-	n = length(target[:,1,1,1])
+	
+	if typeof(target) <: Tuple
+		println("Target is tuple, decomposing singles and doubles tensors")
+		if singles_family(frag_flavour)
+			n = size(target[1])[1]
+		else
+			error("Got Tuple for target tensors, but frag_flavour method $frag_flavour does not include singles!")
+		end
+	else
+		n = size(target)[1]
+	end
+
 	if spin_orb
 		n_qubit = n
 	else
@@ -143,8 +163,9 @@ function relaxed_greedy_driver(target, decomp_tol; reps = 1,
 
 	U_PREV = SharedArray(zeros(u_num, α_max))
 	X_PREV = SharedArray(zeros(fcl, α_max))
+	curr_tbt = target .* 0
+
 	if length(K0) != 0
-		curr_tbt = target .* 0
 		println("Initial conditions found")
 		#@show x0
 		#@show K0
@@ -165,12 +186,11 @@ function relaxed_greedy_driver(target, decomp_tol; reps = 1,
 			curr_tbt -= fragment_to_tbt(frag)
 			idx += xsize
 		end
-		global cost = tbt_cost(0, target_eff)
 	else
 		α = 1
-		global cost = tbt_cost(0, target)
-		curr_tbt = 0 .* target
 	end
+
+	cost = tbt_cost(curr_tbt, target)
 	α_ini = copy(α)
 	
 	x0_tot = copy(x0)
@@ -301,7 +321,17 @@ function relaxed_block_greedy_driver(target, decomp_tol; reps = 1,
 	frag_flavour = META.ff, u_flavour=META.uf,
 	x0 = Float64[], K0 = Int64[], saving=saving,
 	f_name = NAME, b_size = block_size)
-	n = length(target[:,1,1,1])
+	
+	if typeof(target) <: Tuple
+		if singles_family(frag_flavour)
+			n = size(target[1])[1]
+		else
+			error("Got Tuple for target tensors, but frag_flavour method $frag_flavour does not include singles!")
+		end
+	else
+		n = size(target)[1]
+	end
+
 	if spin_orb
 		n_qubit = n
 	else
@@ -323,6 +353,8 @@ function relaxed_block_greedy_driver(target, decomp_tol; reps = 1,
 
 	U_PREV = SharedArray(zeros(u_num, tot_reps))
 	X_PREV = SharedArray(zeros(fcl, tot_reps))
+	curr_tbt = 0 .* target
+
 	if length(K0) != 0
 		curr_tbt = target .* 0
 		println("Initial conditions found")
@@ -345,12 +377,11 @@ function relaxed_block_greedy_driver(target, decomp_tol; reps = 1,
 			curr_tbt -= fragment_to_tbt(frag)
 			idx += xsize
 		end
-		global cost = tbt_cost(0, target_eff)
 	else
 		α = 1
-		global cost = tbt_cost(0, target)
-		curr_tbt = 0 .* target
 	end
+
+	cost = tbt_cost(curr_tbt, target)
 	α_ini = copy(α)
 	
 	x0_tot = copy(x0)
@@ -428,7 +459,16 @@ function full_rank_driver(target, decomp_tol; reps = 1,
 
 	println("Starting full_rank_driver with pre_optimization = $PRE_OPT")
 
-	n = length(target[:,1,1,1])
+	if typeof(target) <: Tuple
+		if singles_family(frag_flavour)
+			n = size(target[1])[1]
+		else
+			error("Got Tuple for target tensors, but frag_flavour method $frag_flavour does not include singles!")
+		end
+	else
+		n = size(target)[1]
+	end
+
 	if spin_orb
 		n_qubit = n
 	else
@@ -467,7 +507,7 @@ function full_rank_driver(target, decomp_tol; reps = 1,
 	α = ini_length + 1
 	FCost = SharedArray(zeros(tot_reps))
 	X_ARR = SharedArray(zeros(tot_reps, α_max*xsize))
-	@show cost
+	println("Starting optimization, current cost is $cost")
 	while cost > decomp_tol && α <= α_max
 		x_len = length(x0) + xsize
 		println("Starting parallel calculation for fragment number $α")
@@ -520,7 +560,7 @@ function full_rank_driver(target, decomp_tol; reps = 1,
 		end
 		α += 1
 		if saving == true
-			overwrite_xK(f_name, x0, K0)
+			overwrite_xK(f_name,x0,K0)
 		end
 	end
 
@@ -551,7 +591,16 @@ function full_rank_non_iterative_driver(target;
 
 	println("Starting full_rank_non_iterative_driver")
 
-	n = length(target[:,1,1,1])
+	if typeof(target) <: Tuple
+		if singles_family(frag_flavour)
+			n = size(target[1])[1]
+		else
+			error("Got Tuple for target tensors, but frag_flavour method $frag_flavour does not include singles!")
+		end
+	else
+		n = size(target)[1]
+	end
+
 	if spin_orb
 		n_qubit = n
 	else
@@ -594,7 +643,16 @@ function orthogonal_greedy_driver(target, decomp_tol; reps = 1,
 	frag_flavour = META.ff, u_flavour=META.uf, λ = λort,
 	saving=saving, f_name=NAME)
 
-	n = length(target[:,1,1,1])
+	if typeof(target) <: Tuple
+		if singles_family(frag_flavour)
+			n = size(target[1])[1]
+		else
+			error("Got Tuple for target tensors, but frag_flavour method $frag_flavour does not include singles!")
+		end
+	else
+		n = size(target)[1]
+	end
+
 	if spin_orb
 		n_qubit = n
 	else

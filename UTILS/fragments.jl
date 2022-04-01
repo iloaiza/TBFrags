@@ -529,6 +529,16 @@ function CSA_family(frag_flavour :: FRAG_FLAVOUR)
 	end
 end
 
+function singles_family(frag_flavour :: FRAG_FLAVOUR)
+	SINGLES_ARR = [CSASD()]
+
+	if frag_flavour in SINGLES_ARR
+		return true
+	else
+		return false
+	end
+end
+
 function fragment_to_tbt(frag::fragment; frag_flavour = META.ff, u_flavour = META.uf)
 	#CSASD returns obt, tbt
 	if CSA_family(frag_flavour)

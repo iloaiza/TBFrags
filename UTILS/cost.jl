@@ -1,4 +1,10 @@
 # FUNCTIONS FOR CALCULATING COST OF TBT AND FRAGMENTS W/R TO TARGET
+import Base.+
+import Base.-
+
++(A::Tuple, B::Tuple) = (A[1]+B[1], A[2]+B[2])
+-(A::Tuple, B::Tuple) = (A[1]-B[1], A[2]-B[2])
+
 function SD_cost(obt, tbt, ob_target, tb_target)
 	if tbt == 0
 		tb_diff = tb_target
@@ -20,7 +26,7 @@ function SD_cost(obt, tbt, ob_target, tb_target)
 	#return sum(abs.(ob_diff)) + sum(abs.(tb_diff)) #L1 cost
 end
 		
-function tbt_cost(tbt, target)
+function tbt_cost(tbt, target :: Array)
 	if tbt == 0
 		diff = target
 	elseif target == 0
@@ -31,6 +37,18 @@ function tbt_cost(tbt, target)
 
 	return sum(abs2.(diff)) #L2 norm
 	#return sum(abs2.(diff)) #L1 norm
+end
+
+function tbt_cost(tbt, target :: Tuple)
+	if tbt == 0
+		return SD_cost(0, 0, target[1], target[2])
+	else
+		error("Trying to obtain tbt cost where target is a touple but tbt isn't")
+	end
+end
+
+function tbt_cost(tbt :: Tuple, target :: Tuple)
+	return SD_cost(tbt[1], tbt[2], target[1], target[2])
 end
 
 function fragment_cost(frag, target; frag_flavour=META.ff, u_flavour=META.uf)
@@ -67,7 +85,7 @@ end
 
 function full_rank_cost(x, target, class_arr; n=length(target[:,1,1,1]), spin_orb = false, frag_flavour=META.ff, u_flavour=META.uf)
 	#x_arr = reshape(x, num_classes, :)
-	tbt = zeros(n,n,n,n)
+	tbt = 0 .* target
 	if spin_orb
 		n_qubit = n
 	else
@@ -89,11 +107,12 @@ function full_rank_cost(x, target, class_arr; n=length(target[:,1,1,1]), spin_or
 	return tbt_cost(tbt, target)
 end
 
+
 function relaxed_cost(x, target, class_arr, u_arr, x_prev; n=length(target[:,1,1,1]), spin_orb = false, frag_flavour=META.ff, u_flavour=META.uf)
 	#uses unitaries from previous arrays, optimizes fully new fragment and previous fragments coefficients
 	#x_prev: array of previous x, dimensions are [fcl-1, num_frags-1]
 	#u_arr: array of previous unitaries, dimensions are [u_num, num_frags-1]
-	tbt = zeros(n,n,n,n)
+	tbt = 0 .* target
 	if spin_orb
 		n_qubit = n
 	else
@@ -117,11 +136,12 @@ function relaxed_cost(x, target, class_arr, u_arr, x_prev; n=length(target[:,1,1
 	return tbt_cost(tbt, target)
 end
 
+
 function relaxed_block_cost(x, target, class_arr, u_arr, x_prev; b_size = block_size, n=length(target[:,1,1,1]), spin_orb = false, frag_flavour=META.ff, u_flavour=META.uf)
 	#uses unitaries from previous arrays, optimizes fully b_size new fragments and previous fragments coefficients
 	#x_prev: array of previous x, dimensions are [fcl-1, num_frags-b_size]
 	#u_arr: array of previous unitaries, dimensions are [u_num, num_frags-b_size]
-	tbt = zeros(n,n,n,n)
+	tbt = 0 .* target
 	if spin_orb
 		n_qubit = n
 	else

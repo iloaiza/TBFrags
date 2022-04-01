@@ -88,16 +88,16 @@ function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1
     h1b = of_simplify(h1b)
 	obt = fermionic.get_obt(h1b, spin_orb=spin_orb)
 	
-	@show of_simplify(h_ferm - tbt_to_ferm(tbt,spin_orb) - obt_to_ferm(obt,spin_orb))
+	#@show of_simplify(h_ferm - tbt_to_ferm(tbt,spin_orb) - obt_to_ferm(obt,spin_orb))
 
 	if n_elec == false
-		return obt, tbt, h_ferm
+		return (obt, tbt), h_ferm
 	else
-		return obt, tbt, h_ferm, num_elecs
+		return (obt, tbt), h_ferm, num_elecs
 	end
 end
 
-function tbt_to_ferm(tbt, spin_orb; norm_ord = NORM_ORDERED)
+function tbt_to_ferm(tbt :: Array, spin_orb; norm_ord = NORM_ORDERED)
 	if norm_ord == true
 		return of.normal_ordered(fermionic.get_ferm_op(tbt, spin_orb))
 	else
@@ -114,6 +114,9 @@ function obt_to_ferm(obt, spin_orb; norm_ord = NORM_ORDERED)
 	end
 end
 
+function tbt_to_ferm(tbt :: Tuple, spin_orb; norm_ord = NORM_ORDERED)
+	return tbt_to_ferm(tbt[2], spin_orb, norm_ord=norm_ord) + obt_to_ferm(tbt[1], spin_orb, norm_ord=norm_ord)
+end
 
 function fragment_to_ferm(frag; frag_flavour=META.ff, u_flavour=META.uf, norm_ord = NORM_ORDERED)
 	tbt = fragment_to_tbt(frag, frag_flavour=frag_flavour, u_flavour=u_flavour)

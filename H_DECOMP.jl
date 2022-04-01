@@ -80,17 +80,32 @@ if in_block(opt_flavour)
 	@show block_size
 end
 
+if singles_family(META.ff)
+	global SINGLES = true
+else
+	global SINGLES = false
+end
 if include_singles == false
+	if SINGLES
+		error("Trying to run singles+doubles method on pure doubles tensor!")
+	end
 	println("Using pure two-body tensor")
-	global NAME = "ham_D_" * mol_name * "_" * frag_flavour * "_" * u_flavour * "_" * opt_flavour
+	global NAME = "H_DECOMP_D_" * mol_name * "_" * frag_flavour * "_" * u_flavour * "_" * opt_flavour
 	tbt, h_ferm, num_elecs = obtain_tbt(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
 else
 	println("Including one-body terms in two-body tensor")
-	if spin_orb == false
-		error("Trying to run for one and two body terms with spin_orb = false!")
+	global NAME = "H_DECOMP_SD_" * mol_name * "_" * frag_flavour * "_" * u_flavour * "_" * opt_flavour
+
+	if SINGLES == false
+		if spin_orb == false
+			error("Trying to run for one and two body terms with spin_orb = false, cannot combine into single two-body tensor!")
+		end
+		println("Combining one and two-body terms in two-body tensor")
+		tbt, h_ferm, num_elecs = full_ham_tbt(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
+	else
+		println("Running calculations with one-body and two-body tensors tuple")
+		tbt, h_ferm, num_elecs = obtain_SD(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
 	end
-	global NAME = "ham_SD_" * mol_name * "_" * frag_flavour * "_" * u_flavour * "_" * opt_flavour
-	tbt, h_ferm, num_elecs = full_ham_tbt(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
 end
 
 if opt_flavour == "full-rank" || opt_flavour == "fr"
@@ -111,17 +126,30 @@ else
 	error("Trying to do decomposition with optimization flavour $opt_flavour, not implemented!")
 end
 
+#=
 if verbose == true
 	println("Printing fragment angles:")
 	for frag in FRAGS
 		@show frag.class, frag.cn[2:end] ./ π
 	end
 end
+# =#
 
 global tbt_fin = 0 .* tbt
-for frag in FRAGS
-    global tbt_fin += fragment_to_tbt(frag)
+
+if SINGLES == false
+	for frag in FRAGS
+	    global tbt_fin += fragment_to_tbt(frag)
+	end
+else
+	for frag in FRAGS
+		obt_temp, tbt_temp = fragment_to_tbt(frag)
+	    obt_temp += tbt_fin[1]
+	    tbt_temp += tbt_fin[2]
+	    global tbt_fin = (obt_temp, tbt_temp)
+	end
 end
+
 ini_cost = tbt_cost(0, tbt)
 fin_cost = tbt_cost(tbt_fin, tbt)
 println("Final tbt approximated by $(round((ini_cost-fin_cost)/ini_cost*100,digits=3))%")
@@ -154,7 +182,8 @@ if POST == true
 	println("Finished after $(time() - t00) seconds...")
 
 	h_meas = h_ferm - h_meas
-	#@show of.normal_ordered(h_meas)
+	println("Showing remainder term, should be one-body terms or just constant")
+	@show of_simplify(h_meas)
 
 	EXPS[end] = expectation_value(h_meas, psi)
 	VARS[end] = variance_value(h_meas, psi)

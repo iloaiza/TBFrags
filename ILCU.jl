@@ -46,7 +46,8 @@ println("Starting calculations with:")
 
 global NAME = "ILCU_SD_" * mol_name * "_" * u_flavour
 
-obt, tbt, h_ferm, num_elecs = obtain_SD(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
+ferm_tsrs, h_ferm, num_elecs = obtain_SD(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
+obt, tbt = ferm_tsrs
 # =
 @time FRAGS = CSASD_tot_decomp(h_ferm, reps=reps, grad=grad, verbose=verbose, spin_orb=spin_orb)
 

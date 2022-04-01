@@ -249,7 +249,7 @@ function greedy_step_SD_optimization(ob_target, tb_target, class; spin_orb = fal
 	if grad == false
 		return optimize(cost, x0, BFGS())
 	else
-		error("GRADIENT NOT IMPLEMENTED FOR SD OPTIMIZATION")
+		error("Gradient not implemented for SD optimization")
 		#=
 		function grad!(storage, x)
 			return parameter_gradient!(storage, x, target, class, n,

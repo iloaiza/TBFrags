@@ -76,6 +76,15 @@ macro overwriting(funcname::String,params...)
 	end
 end
 
+function saving_xK(funcname::String,x0,K0)
+	oldfile(funcname)
+	h5write(DATAFOLDER*funcname*".h5","numparams",2)
+	h5write(DATAFOLDER*funcname*".h5","paramsNames",["x0","K0"])
+	h5write(DATAFOLDER*funcname*".h5","x0",x0)
+	h5write(DATAFOLDER*funcname*".h5","K0",K0)
+	#println("overwrite_xK debug message: Saved x0 and K0 in $funcname")
+end
+
 function overwrite_xK(funcname::String,x0,K0)
 	file_space(funcname)
 	h5write(DATAFOLDER*funcname*".h5","numparams",2)
