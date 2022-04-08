@@ -83,7 +83,7 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=false, return_CSA=false, imag_
 	    tbt_svd_greedy = unitary_cartan_rotation_from_matrix(Ul, tbt_svd_greedy_CSA)
 	    #u_params = orb_rot_mat_to_params(Ul, n, u_flavour = MF())
 	    TBTS[i,:,:,:,:] = tbt_svd_greedy
-	    CARTAN_TBTS[i,:,:,:,:] = tbt_svd_greedy
+	    CARTAN_TBTS[i,:,:,:,:] = tbt_svd_greedy_CSA
 	end
 
 	println("Finished SVD routine")

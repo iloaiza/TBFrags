@@ -171,4 +171,9 @@ N_op, Sz, S2 = casimirs_builder(n_qubit)
 @show of_simplify(of.commutator(N_op, Sz))
 @show of_simplify(of.commutator(N_op, S2))
 # =#
-# =# =# =# =# =# =#
+# =#
+# =#
+# =#
+# =#
+# =#
+# =#

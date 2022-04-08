@@ -9,7 +9,9 @@ if !(@isdefined(DATAFOLDER))
 	DATAFOLDER = "./SAVE/"
 end
 
-println("Loading and saving in $DATAFOLDER")
+if myid() == 1
+	println("Loading and saving in $DATAFOLDER")
+end
 
 function stringSymbolSeparator(params,numparams=length(params))
 	paramsNames = String[]

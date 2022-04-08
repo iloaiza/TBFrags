@@ -1,4 +1,49 @@
-function op_range(op, n_qubit; transformation=transformation, imag_tol=1e-16)
+function CSA_λs_evals(λs, n)
+	E_VALS = zeros(typeof(λs[1,1]),2^n)
+	λ_len = size(λs)[1]
+	for i in 0:2^n-1
+		n_arr = digits(i, base=2, pad=n)
+		for j in 1:λ_len
+			if n_arr[Int(λs[j,2])] == 1 && n_arr[Int(λs[j,3])] == 1
+				E_VALS[i+1] += λs[j,1]
+			end
+		end
+	end
+
+	RANGE = [minimum(real.(E_VALS)), maximum(real.(E_VALS))]
+	return RANGE
+end
+function CSA_tbt_range(tbt_CSA_so, triang=false)
+	#Entry is a two-body spin-orbital Cartan tensor, returns operator range
+	#if triang = false it assumes entry is symmetric (tbt_CSA_so[i,i,j,j] = tbt_CSA_so[j,j,i,i])
+	#triang = true assumes all coefficients are on [i,i,j,j] for i≤j
+	if triang == false
+		tbt_triang = cartan_tbt_to_triang(tbt_CSA_so)
+	else
+		tbt_triang = tbt_CSA_so
+	end
+	n = size(tbt_CSA_so)[1]
+	num_lambdas = Int(n*(n+1)/2)
+	#λs[:,1] = [λij]
+	#λs[:,2] = [ni num]
+	#λs[:,3] = [nj num]
+	λs = zeros(typeof(tbt_CSA_so[1]),num_lambdas,3)
+	global idx = 0
+	for i in 1:n
+		for j in i:n
+			idx += 1
+			λs[idx,1] = tbt_triang[i,i,j,j]
+			λs[idx,2:3] = [i,j]
+		end
+	end
+
+	return CSA_λs_evals(λs, n)
+end
+
+
+
+
+function op_range(op, n_qubit; transformation=transformation, imag_tol=1e-16, ncv=minimum([50,2^n_qubit]))
 	#Calculates maximum and minimum eigenvalues for fermionic operator
 	op_qubit = qubit_transform(op)
 	op_py_sparse_mat = of.qubit_operator_sparse(op_qubit)
@@ -26,15 +71,15 @@ function op_range(op, n_qubit; transformation=transformation, imag_tol=1e-16)
 	end
 
 	# =
-	E_max,_ = eigs(sparse_op, nev=1, which=:LR, maxiter = 500000, tol=1e-6)
-	E_min,_ = eigs(sparse_op, nev=1, which=:SR, maxiter = 500000, tol=1e-6)
+	E_max,_ = eigs(sparse_op, nev=1, which=:LR, maxiter = 500000, tol=1e-6, ncv=ncv)
+	E_min,_ = eigs(sparse_op, nev=1, which=:SR, maxiter = 500000, tol=1e-6, ncv=ncv)
 	E_range = real.([E_min[1], E_max[1]])
 	# =#
 
-	#=
+	#= Debug, checks it's the same as full diagonalization
 	E, _ = eigen(collect(sparse_op))
 	E = real.(E)
-	E_range = [minimum(E), maximum(E)]
+	@show E_range - [minimum(E), maximum(E)]
 	# =#
 	
 	
@@ -43,29 +88,28 @@ end
 
 mutable struct Atomic{T}; @atomic x::T; end
 
-function L1_frags_treatment(TBTS, CARTAN_TBTS, PUR_CARTANS, spin_orb, α_tot = size(TBTS)[1])
+function L1_frags_treatment(TBTS, CARTAN_TBTS, PUR_CARTANS, spin_orb, α_tot = size(TBTS)[1], n=size(TBTS)[2])
 	#Caclulate different L1 norms for group of fragments
-	TOT_OP = Atomic(of.FermionOperator.zero()) #holds final operator which is sum of all fragments, used for sanity check
 	CSA_L1 = SharedArray(zeros(α_tot)) #holds (sum _ij |λij|) L1 norm for CSA polynomial
 	PUR_L1 = SharedArray(zeros(α_tot)) #same as CSA_L1 but for symmetry purified polynomials
 	E_RANGES = SharedArray(zeros(α_tot,2)) #holds eigenspectrum boundaries for each operator
 	PUR_RANGES = SharedArray(zeros(α_tot,2)) #same as E_RANGES but for purified polynomials
-	
+
 	@sync @distributed for i in 1:α_tot
 		println("L1 treatment of fragment $i")
+		t00 = time()
 		#build qubit operator for final sanity check
-		#global TOT_OP += tbt_to_ferm(TBTS[i], spin_orb)
-		@atomic TOT_OP.x += tbt_to_ferm(TBTS[i,:,:,:,:], spin_orb)
 		
 		CSA_L1[i] = cartan_tbt_l1_cost(CARTAN_TBTS[i,:,:,:,:], spin_orb)
 		PUR_L1[i] = cartan_tbt_l1_cost(PUR_CARTANS[i,:,:,:,:], true)
 
 		# SQRT_L1 subroutine
 		op_CSA = tbt_to_ferm(CARTAN_TBTS[i,:,:,:,:], spin_orb)
-		E_RANGES[i,:] = real.(op_range(op_CSA, n_qubit))
+		E_RANGES[i,:] = CSA_tbt_range(CARTAN_TBTS[i,:,:,:,:])
+		
 		
 		op_CSA_red = tbt_to_ferm(PUR_CARTANS[i,:,:,:,:], true)
-		PUR_RANGES[i,:] = real.(op_range(op_CSA_red, n_qubit))
+		PUR_RANGES[i,:] = CSA_tbt_range(PUR_CARTANS[i,:,:,:,:])
 		
 		#= linear programing reflection optimization
 		obt_CSA_mo, tbt_CSA_mo = CARTAN_TBTS[i]
@@ -99,10 +143,15 @@ function L1_frags_treatment(TBTS, CARTAN_TBTS, PUR_CARTANS, spin_orb, α_tot = s
 		CSA_L1[i] = ref_sol["csa_l1"]
 		CR_L1[i] = ref_sol["lcu_l1"]
 		# =#
+		println("Finished fragment $i after $(time() - t00) seconds...")
 	end
 
+	TBT_TOT = TBTS[1,:,:,:,:]
+	for i in 2:α_tot
+		TBT_TOT += TBTS[i,:,:,:,:]
+	end
 
-	return CSA_L1, PUR_L1, E_RANGES, PUR_RANGES, @atomic TOT_OP.x
+	return CSA_L1, PUR_L1, E_RANGES, PUR_RANGES, tbt_to_ferm(TBT_TOT, spin_orb)
 end
 
 function qubit_treatment(H_q)
@@ -180,21 +229,19 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	#= CSA subsection
 	CSA_L1, PUR_L1, E_RANGES, PUR_RANGES, CSA_OP = L1_frags_treatment(TBTS, CARTAN_TBTS, PUR_CARTANS, spin_orb)
 	global H_SYM_FERM = of.FermionOperator.zero()
-	H_SYM_FERM += h_ferm
 	for i in 1:α_tot
 		x = PUR_COEFFS[i]
 		shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
-		global H_SYM_FERM -= tbt_to_ferm(shift, true)
-	end_qubit
+		global H_SYM_FERM += tbt_to_ferm(tbt_to_so(TBTS[i,:,:,:,:], spin_orb) - shift, true)
+	end
 	H_SYM_FERM = of_simplify(H_SYM_FERM)
 	# =#
 
 	global H_SYM_FERM_SVD = of.FermionOperator.zero()
-	H_SYM_FERM_SVD += h_ferm
 	for i in 1:α_SVD
 		x = PUR_SVD_COEFFS[i,:]
 		shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
-		global H_SYM_FERM_SVD -= tbt_to_ferm(shift, true)
+		global H_SYM_FERM_SVD += tbt_to_ferm(SVD_TBTS[i,:,:,:,:] - shift, true)
 	end
 	H_SYM_FERM_SVD = of_simplify(H_SYM_FERM_SVD)
 
@@ -230,7 +277,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	println("Shifted minimal norm (SR):")
 	#ΔE_CSA = [(E_RANGES[i,2] - E_RANGES[i,1])/2 for i in 1:size(E_RANGES)[1]]
 	#@show sum(ΔE_CSA)
-	ΔE_SVD = [(SVD_E_RANGES[i,2] - SVD_E_RANGES[i,1])/2 for i in 1:size(SVD_E_RANGES)[1]]
+	ΔE_SVD = [(SVD_E_RANGES[i,2] - SVD_E_RANGES[i,1])/2 for i in 1:α_SVD]
 	@show sum(ΔE_SVD)
 	println("Purified L1 bounds (S-NR):")
 	#@show sum(PUR_L1)/2
@@ -238,7 +285,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	println("Purified minimal norm (SS):")
 	#ΔE_CSA_PUR = [(PUR_RANGES[i,2] - PUR_RANGES[i,1])/2 for i in 1:size(PUR_RANGES)[1]]
 	#@show sum(ΔE_CSA_PUR)
-	ΔE_SVD_PUR = [(SVD_PUR_RANGES[i,2] - SVD_PUR_RANGES[i,1])/2 for i in 1:size(SVD_PUR_RANGES)[1]]
+	ΔE_SVD_PUR = [(SVD_PUR_RANGES[i,2] - SVD_PUR_RANGES[i,1])/2 for i in 1:α_SVD]
 	@show sum(ΔE_SVD_PUR)
 
 	if Q_TREAT == true
@@ -264,14 +311,27 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 
 		#exit()
 		#sanity check, final operator recovers full Hamiltonian
-		H_diff = h_ferm - SVD_OP
+		#= CSA sanity
+		H_diff = h_ferm - CSA_OP
 		H_qubit_diff = qubit_transform(H_diff)
 		
 		println("Difference from CSA fragments:")
 		@show qubit_operator_trimmer(H_qubit_diff, 1e-5)
+		# =#
 
+		# = SVD sanity
 		println("Difference from SVD fragments:")
 		H_diff_SVD = h_ferm - SVD_OP
+		H_qubit_diff_SVD = qubit_transform(H_diff_SVD)
+		@show qubit_operator_trimmer(H_qubit_diff_SVD, 1e-5)
+
+		println("Difference from shifted SVD fragments:")
+		x = zeros(5)
+		for i in 1:5
+			x[i] = sum(PUR_SVD_COEFFS[:,i])
+		end
+		shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
+		H_diff_SVD = h_ferm - H_SYM_FERM_SVD - tbt_to_ferm(shift, true)
 		H_qubit_diff_SVD = qubit_transform(H_diff_SVD)
 		@show qubit_operator_trimmer(H_qubit_diff_SVD, 1e-5)
 	end

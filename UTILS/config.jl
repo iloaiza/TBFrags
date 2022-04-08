@@ -39,7 +39,9 @@ const λort = 100 #tolerance for orthogonal constraint in orthogonal-greedy algo
 
 #chose active python directory
 PY_DIR = readchomp(`which python`)
-println("Using python installation in $PY_DIR")
+if myid() == 1
+	println("Using python installation in $PY_DIR")
+end
 
 ## FULL-RANK OPTIMIZATION OPTIONS
 const PRE_OPT = false #false for starting each new step from random x0, true for first doing greedy local optimization of one fragment (...)
