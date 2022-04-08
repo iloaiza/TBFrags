@@ -5,6 +5,38 @@ import Base.-
 +(A::Tuple, B::Tuple) = (A[1]+B[1], A[2]+B[2])
 -(A::Tuple, B::Tuple) = (A[1]-B[1], A[2]-B[2])
 
+function cartan_obt_l1_cost(obt :: Array, spin_orb=true)
+	n=size(obt)[1]
+	l1_cost = sum(abs.(Diagonal(obt)))
+
+	if spin_orb
+		return l1_cost
+	else
+		return 2*l1_cost
+	end
+end
+
+function cartan_tbt_l1_cost(tbt :: Array, spin_orb=true)
+	n=size(tbt)[1]
+
+	global l1_cost = 0.0
+	for i in 1:n
+		for j in 1:n
+			global l1_cost += abs(tbt[i,i,j,j])
+		end
+	end
+
+	if spin_orb
+		return l1_cost
+	else
+		return 4*l1_cost
+	end
+end
+
+function cartan_tbt_l1_cost(tbt :: Tuple, spin_orb=true)
+	return cartan_obt_l1_cost(tbt[1], spin_orb) + cartan_tbt_l1_cost(tbt[2], spin_orb)
+end
+
 function SD_cost(obt, tbt, ob_target, tb_target)
 	if tbt == 0
 		tb_diff = tb_target

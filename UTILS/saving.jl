@@ -6,7 +6,7 @@ global SAVING_LOADED = true
 
 using HDF5
 if !(@isdefined(DATAFOLDER))
-	DATAFOLDER = "./"
+	DATAFOLDER = "./SAVE/"
 end
 
 println("Loading and saving in $DATAFOLDER")
@@ -49,7 +49,7 @@ function file_space(funcname::String)
 	filename = DATAFOLDER*funcname*".h5"
 	if isfile(filename)
 		run(`rm $filename`)
-		println("Removed file $filename for saving new file on top...")
+		#println("Removed file $filename for saving new file on top...")
 	end
 end
 

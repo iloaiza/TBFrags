@@ -3,7 +3,7 @@
 using Distributed
 @everywhere include("UTILS/config.jl")
 
-#ARGS = [1=mol_name, 2=save_name of initial conditions (put false if none), 3=opt_flavour, 4=frag_flavour, 5=u_flavour, 6=α_max]
+#ARGS = [1=mol_name, 2=save_name of initial conditions (put false if none), 3=opt_flavour, 4=frag_flavour, 5=u_flavour, 6=α_max, 7=spin_orb]
 args_len = length(ARGS)
 const mol_name = ARGS[1]
 if args_len >=2
@@ -29,6 +29,9 @@ if SUPPRESSOR == false
 	if args_len >= 6
 		@everywhere const α_max = parse(Int64, remotecall_fetch(i->ARGS[i],1,6))
 	end
+	if args_len >= 7
+		@everywhere const spin_orb = parse(Bool, remotecall_fetch(i->ARGS[i],1,7))
+	end
 else
 	@everywhere using Suppressor
 	if args_len >= 3
@@ -42,6 +45,9 @@ else
 	end
 	if args_len >= 6
 		@everywhere @suppress_err global α_max = parse(Int64, remotecall_fetch(i->ARGS[i],1,6))
+	end
+	if args_len >= 7
+		@everywhere @suppress_err global spin_orb = parse(Bool, remotecall_fetch(i->ARGS[i],1,7))
 	end
 end
 @everywhere include("include.jl")
@@ -108,52 +114,28 @@ else
 	end
 end
 
-if opt_flavour == "full-rank" || opt_flavour == "fr"
-	@time FRAGS = full_rank_driver(tbt, decomp_tol, reps = reps, α_max=α_max, grad=grad, verbose=verbose, x0=x0, K0=K0, spin_orb=spin_orb)
-elseif opt_flavour == "greedy" || opt_flavour == "g"
-	@time FRAGS = greedy_driver(tbt, decomp_tol, reps = reps, α_max=α_max, grad=grad, verbose=verbose, spin_orb=spin_orb, x0=x0, K0=K0)
-elseif opt_flavour == "relaxed-greedy" || opt_flavour == "rg"
-	@time FRAGS = relaxed_greedy_driver(tbt, decomp_tol, reps = reps, α_max=α_max, grad=grad, verbose=verbose, spin_orb=spin_orb, x0=x0, K0=K0)
-elseif opt_flavour == "og" || opt_flavour == "orthogonal-greedy"
-	println("Using λ=$λort for orthogonal greedy constrain value")
-	@time FRAGS = orthogonal_greedy_driver(tbt, decomp_tol, reps = reps, α_max=α_max, grad=grad, verbose=verbose, spin_orb=spin_orb)
-elseif opt_flavour == "frni" || opt_flavour == "full-rank-non-iterative"
-	num_classes = number_of_classes(frag_flavour)
-	class_train = rand(1:num_classes, α_max)
-	@show class_train
-	@time FRAGS = full_rank_non_iterative_driver(tbt, grad=grad, verbose=verbose, x0=x0, K0=class_train, spin_orb=spin_orb)
-else
-	error("Trying to do decomposition with optimization flavour $opt_flavour, not implemented!")
-end
-
-#=
-if verbose == true
-	println("Printing fragment angles:")
-	for frag in FRAGS
-		@show frag.class, frag.cn[2:end] ./ π
-	end
-end
-# =#
+FRAGS = run_optimization(opt_flavour, tbt, decomp_tol, reps, α_max, grad, verbose, x0, K0, spin_orb, NAME)
 
 global tbt_fin = 0 .* tbt
 
-if SINGLES == false
-	for frag in FRAGS
-	    global tbt_fin += fragment_to_tbt(frag)
-	end
-else
-	for frag in FRAGS
-		obt_temp, tbt_temp = fragment_to_tbt(frag)
-	    obt_temp += tbt_fin[1]
-	    tbt_temp += tbt_fin[2]
-	    global tbt_fin = (obt_temp, tbt_temp)
-	end
+for frag in FRAGS
+    global tbt_fin += fragment_to_tbt(frag)
 end
+
 
 ini_cost = tbt_cost(0, tbt)
 fin_cost = tbt_cost(tbt_fin, tbt)
 println("Final tbt approximated by $(round((ini_cost-fin_cost)/ini_cost*100,digits=3))%")
 
+if POST == true
+	println("Starting post-decomposition routine")
+	_,INIT = loading(NAME)
+	x0 = INIT[1]
+	K0 = INIT[2]
+	H_POST(tbt, h_ferm, x0, K0, spin_orb, frag_flavour=META.ff)
+end
+
+#= Old post routine, useful for measurement problem
 if POST == true
 	println("Starting post-processing...")
 	psi = get_wavefunction(h_ferm, wfs, num_elecs)
@@ -206,3 +188,4 @@ if POST == true
 	end
 
 end
+# =#

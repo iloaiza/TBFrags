@@ -114,6 +114,19 @@ function unitary_generator(u_params, n; u_flavour=META.uf)
 	return Ugen
 end
 
+function unitary_cartan_rotation_from_matrix(Umat, tbt :: Array, n=size(tbt)[1])
+	#rotates Cartan tbt using orbital rotation matrix Umat
+	if typeof(Umat[1]) == Float64 && typeof(tbt[1]) == Float64
+		rotated_tbt = zeros(typeof(tbt[1,1,1,1]),n,n,n,n)
+		@einsum rotated_tbt[a,b,c,d] = Umat[a,l] * Umat[b,l] * Umat[c,m] * Umat[d,m] * tbt[l,l,m,m]
+	else
+		rotated_tbt = zeros(Complex{Float64},n,n,n,n)
+		@einsum rotated_tbt[a,b,c,d] = Umat[a,l] * conj(Umat[b,l]) * Umat[c,m] * conj(Umat[d,m]) * tbt[l,l,m,m]
+	end
+
+	return rotated_tbt
+end
+
 function unitary_rotation(u_params, tbt, n=length(tbt[:,1,1,1]), u_flavour=META.uf)
 	# warning: only works for tbt consisting of Cartans (i.e. tbt[i,j,k,l] ∝ δij*δkl)
 	# return rotation of tbt with unitary given by u_params, using unitary flavour u_flavour
@@ -201,4 +214,23 @@ function unitary_parameter_number(n, flavour = META.uf)
 	else
 		error("Trying to obtain number of parameters for unitary flavour $flavour, not defined!")
 	end
+end
+
+function orb_rot_mat_to_params(Umat, n; u_flavour = META.uf, tol=1e-14, restarts=5, curr_restart=0)
+	#convert unitary rotation matrix to parameters
+	cost(x) = sum(abs2.(Umat - unitary_rotation_matrix(x, n, u_flavour=u_flavour)))
+
+	x0 = 2π*rand(unitary_parameter_number(n, u_flavour))
+	sol = optimize(cost, x0, BFGS())
+
+	if sol.minimum > tol
+		if curr_restart == restarts
+			println("Warning, matrix to parameter transformation of rotation not converged, remainder cost is $(sol.minimum)")
+		else
+			return orb_rot_mat_to_params(Umat, n, u_flavour = u_flavour, tol=tol, restarts=restarts, curr_restart=curr_restart+1)
+		end
+		
+	end
+
+	return sol.minimizer
 end

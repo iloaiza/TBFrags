@@ -445,7 +445,7 @@ function fragment_to_normalized_cartan_tbt(frag::fragment; frag_flavour = META.f
 		tbt = csa_tbt_builder(frag.cn[n+1:end], n)
 		obt = csa_obt_builder(frag.cn[1:n], n)
 		if frag.spin_orb == false
-			return obt./2, tbt ./ 4
+			return obt ./ 2, tbt ./ 4
 		else
 			return obt, tbt
 		end

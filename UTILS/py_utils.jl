@@ -15,8 +15,21 @@ mp2 = pyimport("mp2_utils")
 qbit = pyimport("qubit_utils")
 antic = pyimport("anti_commuting")
 car2lcu = pyimport("car2lcu_utils")
+tap = pyimport("tapering_ham")
 
 of_simplify(OP) = of.reverse_jordan_wigner(of.jordan_wigner(OP))
+
+function qubit_transform(op, transformation=transformation)
+	if transformation == "bravyi_kitaev" || transformation == "bk"
+		op_qubit = of.bravyi_kitaev(op)
+	elseif transformation == "jordan_wigner" || transformation == "jw"
+		op_qubit = of.jordan_wigner(op)
+	else
+		error("$transformation not implemented for fermion to qubit operator maping")
+	end
+
+	return op_qubit
+end
 
 function obtain_hamiltonian(mol_name; basis="sto3g", ferm=true, geometry=1, n_elec=false)
 	if n_elec == false
@@ -125,6 +138,15 @@ end
 
 function fragment_to_normalized_ferm(frag; frag_flavour=META.ff, u_flavour=META.uf, norm_ord = NORM_ORDERED)
 	tbt = fragment_to_normalized_tbt(frag, frag_flavour=frag_flavour, u_flavour=u_flavour)
+	return tbt_to_ferm(tbt, frag.spin_orb, norm_ord = norm_ord)
+end
+
+function fragment_to_cartan_ferm(frag; frag_flavour=META.ff, norm_ord = NORM_ORDERED)
+	#returns Cartan form of the tbt without applying unitary rotation in fragment
+	tbt = fragment_to_normalized_cartan_tbt(frag, frag_flavour=frag_flavour)
+	if CSA_family(frag_flavour) == false
+		tbt = frag.cn[1] * tbt
+	end
 	return tbt_to_ferm(tbt, frag.spin_orb, norm_ord = norm_ord)
 end
 
@@ -261,4 +283,16 @@ end
 
 function ac_sorted_inversion(H::PyObject, tol=1e20)
 	return antic.sorted_inversion_antic(H, tol=tol)
+end
+
+function qubit_operator_trimmer(Qop, tol=1e-6)
+	global H_trim = of.QubitOperator.zero()
+
+	for items in Qop.terms
+		pw, val = items
+		if abs(val) > tol
+			global H_trim += of.QubitOperator(term=pw, coefficient=val)
+		end
+	end
+		return H_trim
 end

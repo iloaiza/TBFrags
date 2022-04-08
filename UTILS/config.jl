@@ -3,7 +3,7 @@ const spin_orb = false #whether spin-orbitals (true) or normalized orbitals (fal
 const include_singles = true #if true, include one-body term in two-body fragment
 const decomp_tol = 2.5e-6 #decomposition tolerance for number of fragments
 const α_max = 50 #maximum number of fragments
-const reps = 5 #number of repetitions, useful for better exploring initial conditions space and using all processors during parallelization
+const reps = 1 #number of repetitions, useful for better exploring initial conditions space and using all processors during parallelization
 
 ### Molecular parameters/basis
 const wfs = "fci" #wavefunction type for <psi|OPERATOR|psi> calculations, accepts "fci" or "hf"
@@ -25,7 +25,7 @@ global DATAFOLDER = "SAVE/"
 const NORM_ORDERED = false #whether operators are normal ordered automatically
 const NORM_BRAKETS = true #whether braket operations (e.g. variances and expectations) automatically normalize operator before calculation, shouldn't change results
 
-const POST = false #do post-processing once fragments are obtained (get expectation values and variances)
+const POST = true #do post-processing once fragments are obtained (get expectation values and variances)
 const PLOT = false #do correlation plot, requires POST=true
 
 ## DEFAULT FLAVOURS
@@ -39,7 +39,7 @@ const λort = 100 #tolerance for orthogonal constraint in orthogonal-greedy algo
 
 #chose active python directory
 PY_DIR = readchomp(`which python`)
-#println("Using python installation in $PY_DIR")
+println("Using python installation in $PY_DIR")
 
 ## FULL-RANK OPTIMIZATION OPTIONS
 const PRE_OPT = false #false for starting each new step from random x0, true for first doing greedy local optimization of one fragment (...)

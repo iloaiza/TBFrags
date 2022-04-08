@@ -22,7 +22,7 @@ def get_antic_group(H:QubitOperator):
     '''
     # Building list of operators
     pws, vals = get_nontrivial_paulis(H)
-    print("Found {} terms in Pauli representation".format(len(pws)))
+    #print("Found {} terms in Pauli representation".format(len(pws)))
 
     # Building commuting matrix and find commuting set
     pnum = len(pws)
@@ -40,11 +40,11 @@ def get_antic_group(H:QubitOperator):
         for idx in indices:
             comm_list[key - 1] += pws[idx] * vals[idx]
             group_L1[key - 1] += np.abs(vals[idx])**2
-    print("Number of different groups is {}".format(len(comm_list)))
+    #print("Number of different groups is {}".format(len(comm_list)))
 
     L1_norm = np.sum(group_L1**0.5)
     pauli_norm = np.sum(np.abs(vals))
-    return comm_list, L1_norm, pauli_norm
+    return comm_list, L1_norm, pauli_norm, len(pws)
 
 def sorted_inversion_antic(H:QubitOperator, tol=1e-1):
     '''

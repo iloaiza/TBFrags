@@ -9,6 +9,8 @@ from scipy.linalg import null_space
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
+DECIMALS = 6
+
 def TBT_to_L1opt_LCU (tbt, norb, solmtd='l1ip', pout=True): 
     solvers = {'l1rs'  :'revised simplex', 
                'l1ip'  :'interior-point',
@@ -394,9 +396,9 @@ def pol_eval (res, tbt, norb, optmtd, pout=True):
     pker = null_space(pmat)
     cpar = tbt2cpar(tbt, norb)
     cobj = cpar + np.matmul(pker, copt)
-    prdim = np.count_nonzero(np.around(cobj, decimals=6))
+    prdim = np.count_nonzero(np.around(cobj, decimals=DECIMALS))
     lam   = tbt2lam (tbt, norb)
-    lam_resmax = np.around(np.max(np.absolute(lam - np.matmul(pmat, cobj) )), decimals=6)
+    lam_resmax = np.around(np.max(np.absolute(lam - np.matmul(pmat, cobj) )), decimals=DECIMALS)
     csa_l1 = np.sum(np.absolute(lam), axis=0)[0]
 
     opteval = {'solver':optmtd, 'lamdim':npair, 'poldim':prdim, 
@@ -416,9 +418,9 @@ def obttbt_pol_eval (res, obt, tbt, norb, optmtd, pout=True):
     pker = null_space(pmat)
     cpar = obttbt2cpar(obt, tbt, norb)
     cobj = cpar + np.matmul(pker, copt)
-    prdim = np.count_nonzero(np.around(cobj, decimals=6))
+    prdim = np.count_nonzero(np.around(cobj, decimals=DECIMALS))
     lam   = obttbt2lam (obt, tbt, norb)
-    lam_resmax = np.around(np.max(np.absolute(lam - np.matmul(pmat, cobj) )), decimals=6)
+    lam_resmax = np.around(np.max(np.absolute(lam - np.matmul(pmat, cobj) )), decimals=DECIMALS)
     csa_l1 = np.sum(np.absolute(lam), axis=0)[0]
 
     opteval = {'solver':optmtd, 'lamdim':npair, 'poldim':prdim, 

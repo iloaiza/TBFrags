@@ -1,3 +1,30 @@
+function run_optimization(opt_flavour, tbt, decomp_tol, reps, α_max, grad, verbose, x0, K0, spin_orb, f_name; frag_flavour=META.ff)
+	if opt_flavour == "full-rank" || opt_flavour == "fr"
+		@time FRAGS = full_rank_driver(tbt, decomp_tol, f_name = f_name, reps = reps, α_max=α_max, grad=grad, verbose=verbose, x0=x0, K0=K0, spin_orb=spin_orb)
+	elseif opt_flavour == "greedy" || opt_flavour == "g"
+		@time FRAGS = greedy_driver(tbt, decomp_tol, f_name = f_name, reps = reps, α_max=α_max, grad=grad, verbose=verbose, spin_orb=spin_orb, x0=x0, K0=K0)
+	elseif opt_flavour == "relaxed-greedy" || opt_flavour == "rg"
+		@time FRAGS = relaxed_greedy_driver(tbt, decomp_tol, f_name = f_name, reps = reps, α_max=α_max, grad=grad, verbose=verbose, spin_orb=spin_orb, x0=x0, K0=K0)
+	elseif opt_flavour == "og" || opt_flavour == "orthogonal-greedy"
+		println("Using λ=$λort for orthogonal greedy constrain value")
+		@time FRAGS = orthogonal_greedy_driver(tbt, decomp_tol, f_name = f_name, reps = reps, α_max=α_max, grad=grad, verbose=verbose, spin_orb=spin_orb)
+	elseif opt_flavour == "frni" || opt_flavour == "full-rank-non-iterative"
+		num_classes = number_of_classes(frag_flavour)
+		class_train = rand(1:num_classes, α_max)
+		@show class_train
+		@time FRAGS = full_rank_non_iterative_driver(tbt, f_name=f_name, grad=grad, verbose=verbose, x0=x0, K0=class_train, spin_orb=spin_orb)
+	else
+		error("Trying to do decomposition with optimization flavour $opt_flavour, not implemented!")
+	end
+
+	if CSA_family(frag_flavour) == false
+		println("Showing L1 norm of sum of coefficient fragments")
+		@show sum(abs.([frag.cn[1] for frag in FRAGS]))
+	end
+
+	return FRAGS
+end
+
 #FUNCTIONS FOR OPTIMIZATION DRIVERS (E.G. FULL-RANK, GREEDY)
 function greedy_driver(target, decomp_tol; reps = 1, 
 	α_max=500, grad=true, verbose=true, spin_orb = true, 
@@ -104,6 +131,10 @@ function greedy_driver(target, decomp_tol; reps = 1,
 			push!(K0_tot,k_min)
 			overwrite_xK(f_name,x0_tot,K0_tot)
 		end
+	end
+
+	if saving == true
+		overwrite_xK(f_name,x0_tot,K0_tot)
 	end
 
 	α -= 1
@@ -239,6 +270,10 @@ function relaxed_greedy_driver(target, decomp_tol; reps = 1,
 			push!(K0_tot,k_min)
 			overwrite_xK(f_name,x0_tot,K0_tot)
 		end
+	end
+
+	if saving == true
+		overwrite_xK(f_name,x0_tot,K0_tot)
 	end
 
 	α -= 1
@@ -439,6 +474,10 @@ function relaxed_block_greedy_driver(target, decomp_tol; reps = 1,
 		end
 	end
 
+	if saving == true
+		overwrite_xK(f_name,x0,K0)
+	end
+
 	α -= 1
 	if cost < decomp_tol
 		println("Finished succesfully using $α fragments, final cost is $cost")
@@ -457,7 +496,7 @@ function full_rank_driver(target, decomp_tol; reps = 1,
 	frag_flavour = META.ff, u_flavour=META.uf,
 	saving=saving, f_name = NAME)
 
-	println("Starting full_rank_driver with pre_optimization = $PRE_OPT")
+	#println("Starting full_rank_driver with pre_optimization = $PRE_OPT")
 
 	if typeof(target) <: Tuple
 		if singles_family(frag_flavour)
@@ -495,11 +534,11 @@ function full_rank_driver(target, decomp_tol; reps = 1,
 	ini_length = length(K0)
 	if ini_length != 0
 		println("Starting conditions found for full rank optimization,
-		 using x0 parameters and K0 tensor train for $ini_length fragments")
-		@show x0
-		@show K0
+		 using $ini_length fragments")
+		#@show x0
+		#@show K0
 		K_dict[1:ini_length] .= K0
-		cost = full_rank_cost(x0, target, K0, spin_orb = spin_orb)
+		cost = full_rank_cost(x0, target, K0, spin_orb = spin_orb, n=n)
 	else
 		cost = tbt_cost(0, target)
 	end
@@ -552,8 +591,8 @@ function full_rank_driver(target, decomp_tol; reps = 1,
 		x0 = X_ARR[ind_min, 1:x_len]
 		println("Finished calculation for fragment $α after $(time()-t00) seconds, chose 
 			transformation of type $k_min, current cost is $cost")
+		K0 = K_dict[1:α]
 		if verbose == true
-			K0 = K_dict[1:α]
 			println("Using transformation train K0 and parameters x0:")
 			@show K0
 			@show x0
@@ -562,6 +601,10 @@ function full_rank_driver(target, decomp_tol; reps = 1,
 		if saving == true
 			overwrite_xK(f_name,x0,K0)
 		end
+	end
+
+	if saving == true
+		overwrite_xK(f_name,x0,K0)
 	end
 
 	α -= 1
@@ -720,7 +763,7 @@ function orthogonal_greedy_driver(target, decomp_tol; reps = 1,
 		end
 		α += 1
 	end
-
+	
 	α -= 1
 	if cost < decomp_tol
 		println("Finished succesfully using $α fragments, final cost is $cost")
