@@ -52,6 +52,8 @@ Available optimizations (for obtaining decomposition) (parenthesis shows alias f
 
 
 Available fragments (S_n's):
+    - CSASD: CSA fragments which include one-body and two-body tensors
+
     - CGMFR: uses all 10 classes of two-body Cartan reflections
 
     - GMFR: only uses 3 initially proposed classes of two-body Cartan reflections
@@ -83,28 +85,20 @@ julia:
     -HDF5 (for saving)
     -Plots, PyPlot (for plottling)
     -Suppressor (for suppressing unnecessary warnings)
-    -SparseArrays, Arpack and ExpmV: for efficient calculation and storage of wavefunctions and operators, only used for openfermion based vqe routine (shift_grads.jl)
+    -SparseArrays, Arpack and ExpmV
 python:
     -openfermion, pyscf, openfermionpyscf, tequila-basic
 
 
 ######## INSTALLATION
-Execute install.sh in a terminal
-Requires installing julia packages (can be done by accessing the julia package manager in a julia session with ']', then writing: 'add Optim, PyCall, Einsum, HDF5, SharedArrays, Plots, PyPlot, Suppressor, SparseArrays, Arpack, ExpmV'). Can also be installed by running the "install.sh" script on a terminal, set PY_INSTALL to true(false) to do(not) install python environment along with julia packages.
+Easy install: execute install.sh in a terminal. Set PY_INSTALL=true to install local python environment with necessary packages. Can use custom directory for julia packages by uncommenting JL_DIR lines (useful for computing environments where writing to folder with packages is not allowed while running calculations)
+Requires installing julia packages (can be done by accessing the julia package manager in a julia session with ']', then writing: 'add Optim, PyCall, Einsum, HDF5, SharedArrays, Plots, PyPlot, Suppressor, SparseArrays, Arpack, ExpmV'). Can also be installed by running the "install.sh" script on a terminal, set PY_INSTALL to true(false) to do(not) install python environment along with julia packages. Make sure to build PyCall with correct python environment (check install.sh script, or PyCall github page for more info).
+
 Requires a python executable with installed packages:
 'pip install pyscf openfermion openfermionpyscf tequila-basic'
 
-If running in a server, a python environment with openfermion can be installed with: (will create "venv" folder with installation in current directory)
-'''
-module load python/3.7
-virtualenv --system-site-packages venv
-source venv/bin/activate
-pip install openfermion pyscf openfermionpyscf tequila-basic
-'''
-(name of python module should be changed depending on server module names)
-
-The python virtual environment should then be activated before running run.jl by the command
-'source venv/bin/activate'
+The python virtual environment should then be activated before running TBFrags routines with
+'source VIRTUAL_ENVIRONMENT_DIRECTORY/bin/activate'
 
 
 ######## SAVING RESULTS AND CALCULATION RESTARTS

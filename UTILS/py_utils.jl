@@ -285,14 +285,22 @@ function ac_sorted_inversion(H::PyObject, tol=1e20)
 	return antic.sorted_inversion_antic(H, tol=tol)
 end
 
-function qubit_operator_trimmer(Qop, tol=1e-6)
+function qubit_operator_trimmer(Qop, tol=1e-3)
 	global H_trim = of.QubitOperator.zero()
 
+	trim_count = 0
+	trim_abs = 0.0
 	for items in Qop.terms
 		pw, val = items
 		if abs(val) > tol
 			global H_trim += of.QubitOperator(term=pw, coefficient=val)
+		else
+			trim_count += 1
+			trim_abs += abs(val)
 		end
 	end
-		return H_trim
+	
+	println("Trimmed qubit operator of $trim_count words out of $(length(Qop.terms)), L1 norm of removed coefficients is $trim_abs")
+
+	return H_trim
 end

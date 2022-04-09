@@ -1,5 +1,6 @@
 function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=false, imag_tol=1e-12)
 	println("Starting SVD routine")
+	println("Warning, SVD routine has a bug and might give incorrect results...")
 	n = size(tbt)[1]
 	N = n^2
 

@@ -171,6 +171,15 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	tbt_so = tbt_to_so(tbt, spin_orb)
 	SVD_CARTAN_TBTS, SVD_TBTS = tbt_svd(tbt_so, tol=1e-6, spin_orb=true)
 	α_SVD = size(SVD_TBTS)[1]
+
+	#=
+	tbt_tot = SVD_TBTS[1,:,:,:,:]
+	for i in 2:α_SVD
+		tbt_tot += SVD_TBTS[i,:,:,:,:]
+	end
+	@show sum(abs2.(tbt_so - tbt_tot))
+	exit()
+	# =#
 	
 	if typeof(tbt) <: Tuple
 		n = size(tbt[1])[1]
@@ -214,7 +223,13 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	PUR_SVD_COEFFS = SharedArray(zeros(Complex{Float64}, α_SVD, 5))
 	@sync @distributed for i in 1:α_SVD
 		println("Purifying Cartan fragment $i")
+		orig_range =  CSA_tbt_range(SVD_CARTAN_TBTS[i,:,:,:,:])
+		orig_l1 = cartan_tbt_l1_cost(SVD_CARTAN_TBTS[i,:,:,:,:], true)
 		@time pur_tbt_svd, pur_coeffs_svd = cartan_tbt_purification(SVD_CARTAN_TBTS[i,:,:,:,:], true)
+		pur_range = CSA_tbt_range(pur_tbt_svd)
+		pur_l1 = cartan_tbt_l1_cost(pur_tbt_svd, true)
+		println("Range of fragment $i modified from $orig_range to $pur_range")
+		println("L1 of fragment $i modified from $orig_l1 to $pur_l1")
 		PUR_SVD_CARTANS[i,:,:,:,:] = pur_tbt_svd
 		PUR_SVD_COEFFS[i,:] = pur_coeffs_svd
 	end
@@ -235,13 +250,13 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	H_SYM_FERM = of_simplify(H_SYM_FERM)
 	# =#
 
-	global H_SYM_FERM_SVD = of.FermionOperator.zero()
-	for i in 1:α_SVD
-		x = PUR_SVD_COEFFS[i,:]
-		shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
-		global H_SYM_FERM_SVD += tbt_to_ferm(SVD_TBTS[i,:,:,:,:] - shift, true)
+	x = zeros(5)
+	for i in 1:5
+		x = PUR_SVD_COEFFS[:,i]
 	end
-	H_SYM_FERM_SVD = of_simplify(H_SYM_FERM_SVD)
+	shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
+	H_SYM_FERM_SVD = SVD_OP - tbt_to_ferm(shift, true)
+	#H_SYM_FERM_SVD = of_simplify(H_SYM_FERM_SVD)
 
 	println("Calculating range of full hamiltonian:")
 	Etot_r = op_range(h_ferm, n_qubit)
@@ -307,7 +322,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 		println("Optimal shifted Hamiltonian:")
 		qubit_treatment(H_opt_bk)
 
-		exit()
+		#exit()
 		#sanity check, final operator recovers full Hamiltonian
 		#= CSA sanity
 		H_diff = h_ferm - CSA_OP
@@ -321,7 +336,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 		println("Difference from SVD fragments:")
 		H_diff_SVD = h_ferm - SVD_OP
 		H_qubit_diff_SVD = qubit_transform(H_diff_SVD)
-		@show qubit_operator_trimmer(H_qubit_diff_SVD, 1e-5)
+		@show qubit_operator_trimmer(H_qubit_diff_SVD, 1e-3)
 
 		#= Purified SVD sanity
 		println("Difference from shifted SVD fragments:")

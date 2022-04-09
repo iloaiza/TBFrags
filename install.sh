@@ -6,8 +6,8 @@
 # true creates a python environment in a folder
 PY_INSTALL=false 
 # julia directory for packages, uncomment both lines for installing julia in a particular folder
-JL_DIR="../../JULIA/.julia"
-export JULIA_DEPOT_PATH=$JL_DIR
+#JL_DIR="../../JULIA/.julia"
+#export JULIA_DEPOT_PATH=$JL_DIR
 
 
 if $PY_INSTALL
