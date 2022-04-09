@@ -3,7 +3,8 @@
 using Distributed
 @everywhere include("UTILS/config.jl")
 
-#ARGS = [1=mol_name, 2=save_name of initial conditions (put false if none), 3=opt_flavour, 4=frag_flavour, 5=u_flavour, 6=α_max, 7=spin_orb]
+#ARGS = [1=mol_name, 2=save_name of initial conditions (put false if none),
+#		 3=opt_flavour, 4=frag_flavour, 5=u_flavour, 6=α_max, 7=spin_orb]
 args_len = length(ARGS)
 const mol_name = ARGS[1]
 if args_len >=2

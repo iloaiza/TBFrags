@@ -87,8 +87,6 @@ function op_range(op, n_qubit; transformation=transformation, imag_tol=1e-16, nc
 	return E_range
 end
 
-mutable struct Atomic{T}; @atomic x::T; end
-
 function L1_frags_treatment(TBTS, CARTAN_TBTS, PUR_CARTANS, spin_orb, α_tot = size(TBTS)[1], n=size(TBTS)[2])
 	#Caclulate different L1 norms for group of fragments
 	CSA_L1 = SharedArray(zeros(α_tot)) #holds (sum _ij |λij|) L1 norm for CSA polynomial

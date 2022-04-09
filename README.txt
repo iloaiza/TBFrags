@@ -7,12 +7,6 @@ Factorizes two-body operators into fragments with special properties as H = sum_
 
 
 ######## HOW TO USE:
-## Interaction picture simulations:
-Run in bash: (e.g. for lih molecule)
-'julia ILCU.jl lih'
-Does greedy CSA decomposition simultaneously of one-body and two-body terms for 1 fragment to build interaction picture.
-Then calculates L1 norms with naive Pauli, and two different flavours of anticommuting groupings
-
 
 ## Two-body Hamiltonian decomposition
 Run in bash:
@@ -20,7 +14,7 @@ Run in bash:
 where N is the number of processors for parallel processing, and mol_name is the name of molecule (e.g. h2).
 Check run.jl and config.jl for more arguments/options
 e.g.:
-'julia H_DECOMP.jl lih f full-rank-non-iterative CSA MFR 8'
+'julia H_DECOMP.jl lih f full-rank-non-iterative CSA MFR 8 true'
     options meaning:
         - f (abbreviation for false, both can be used): doesn't load initial conditions for restarted calculation
         - full-rank-non-iterative (can be written as just frni): full-rank optimization starting directly with alpha_max fragments
@@ -28,10 +22,18 @@ e.g.:
         - MFR: (can be written as MF-real as well) real mean-field rotations pertaining to SO(n) group
         - 8: maximum number of fragments α_max. For frni optimizations it's the used number of fragments
 'julia -p 5 H_DECOMP.jl lih' -> runs lih in 5 processors. Default optimization, fragment, and unitary flavours, as well as default α_max, are shown in config.jl under the names opt_flavour, frag_flavour, u_flavour, and α_max.
+        - true: spin-orb=true, uses spin-orbitals (false for using orbital and spin-orbital symmetry)
 
 Most general case, we have
 'julia -p N H_DECOMP.jl mol_name SAVENAME opt_flavour frag_flavour u_flavour α_max'
+for N=number of OpenMP threads (i.e. shared memory parallelization)
 SAVENAME explained in "SAVING RESULTS AND CALCULATION RESTARTS" last section of this file.
+
+## Interaction picture method:
+Run in bash: (e.g. for lih molecule)
+'julia ILCU.jl lih'
+Does greedy CSA decomposition simultaneously of one-body and two-body terms for 1 fragment to build interaction picture.
+Then calculates L1 norms with naive Pauli, and two different flavours of anticommuting groupings
 
 ## VQE routines: check vqe drivers...
 
