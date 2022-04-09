@@ -1,6 +1,6 @@
 function obt_to_tbt(obt)
 	## transform one-body tensor into two-body tensor
-    ## does not work for orbitals! (i.e. spin_orb = false)
+    ## does not work for orbitals! (i.e. for spin_orb = false)
     
     #println("Transforming one-body tensor into two-body object, small numerical errors might appear...")
 	

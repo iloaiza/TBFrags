@@ -5,7 +5,7 @@ from openfermion import FermionOperator, hermitian_conjugated, normal_ordered
 
 def get_one_body_terms(H):
     '''
-    Return the one body terms in H
+    Return the one body terms in H (plus constant term)
     '''
     one_body = FermionOperator.zero()
     for fw, val in H.terms.items():
@@ -15,7 +15,7 @@ def get_one_body_terms(H):
 
 def get_pure_one_body_terms(H):
     '''
-    Return the one body terms in H
+    Return just one body terms in H
     '''
     one_body = FermionOperator.zero()
     for fw, val in H.terms.items():
@@ -25,7 +25,7 @@ def get_pure_one_body_terms(H):
 
 def get_pure_two_body_terms(H):
     '''
-    Return the two body terms in H
+    Return just two body terms in H
     '''
     two_body = FermionOperator.zero()
     for fw, val in H.terms.items():

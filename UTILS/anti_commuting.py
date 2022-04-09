@@ -97,4 +97,4 @@ def sorted_inversion_antic(H:QubitOperator, tol=1e-1):
 
     L1_norm = np.sum(group_L1**0.5)
     pauli_norm = np.sum(np.abs(vals))
-    return op_list, L1_norm, pauli_norm
+    return op_list, L1_norm, pauli_norm, pnum

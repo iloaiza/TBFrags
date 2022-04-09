@@ -1,4 +1,4 @@
-function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=false, return_CSA=false, imag_tol=1e-12)
+function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=false, imag_tol=1e-12)
 	println("Starting SVD routine")
 	n = size(tbt)[1]
 	N = n^2
@@ -35,20 +35,6 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=false, return_CSA=false, imag_
     	push!(L_ops, op_1d * op_1d)
     end
 
-    L1_norms = zeros(num_ops)
-    for i in 1:num_ops
-    	ωl, Ul = eigen(L_mats[i])
-    	for j1 in 1:n
-    		for j2 in 1:n
-    			L1_norms[i] += abs(ωl[j1] * ωl[j2])
-    		end
-    	end
-    end
-
-    if return_CSA == false
-    	return L_ops, L1_norms/2
-    end
-
     TBTS = SharedArray(zeros(Complex{Float64}, num_ops, n, n, n, n))
     CARTAN_TBTS = SharedArray(zeros(Complex{Float64}, num_ops, n, n, n, n))
     #U_MATS = SharedArray(zeros(num_ops, n, n, n, n))
@@ -81,7 +67,7 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=false, return_CSA=false, imag_
 
 	    #println("Rotating tbt")
 	    tbt_svd_greedy = unitary_cartan_rotation_from_matrix(Ul, tbt_svd_greedy_CSA)
-	    #u_params = orb_rot_mat_to_params(Ul, n, u_flavour = MF())
+	    #u_params = orb_rot_mat_to_params(Ul, n)
 	    TBTS[i,:,:,:,:] = tbt_svd_greedy
 	    CARTAN_TBTS[i,:,:,:,:] = tbt_svd_greedy_CSA
 	end

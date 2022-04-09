@@ -13,6 +13,7 @@ function CSA_λs_evals(λs, n)
 	RANGE = [minimum(real.(E_VALS)), maximum(real.(E_VALS))]
 	return RANGE
 end
+
 function CSA_tbt_range(tbt_CSA_so, triang=false)
 	#Entry is a two-body spin-orbital Cartan tensor, returns operator range
 	#if triang = false it assumes entry is symmetric (tbt_CSA_so[i,i,j,j] = tbt_CSA_so[j,j,i,i])
@@ -71,8 +72,8 @@ function op_range(op, n_qubit; transformation=transformation, imag_tol=1e-16, nc
 	end
 
 	# =
-	E_max,_ = eigs(sparse_op, nev=1, which=:LR, maxiter = 500000, tol=1e-6, ncv=ncv)
-	E_min,_ = eigs(sparse_op, nev=1, which=:SR, maxiter = 500000, tol=1e-6, ncv=ncv)
+	E_max,_ = eigs(sparse_op, nev=1, which=:LR, maxiter = 500, tol=1e-6, ncv=ncv)
+	E_min,_ = eigs(sparse_op, nev=1, which=:SR, maxiter = 500, tol=1e-6, ncv=ncv)
 	E_range = real.([E_min[1], E_max[1]])
 	# =#
 
@@ -156,22 +157,21 @@ end
 
 function qubit_treatment(H_q)
 	#does quantum treatment of H_q qubit Hamiltonian
-	println("Starting AC-RLF decomposition")
-	@time op_list_AC, L1_AC, Pauli_cost_AC, Pauli_num = anti_commuting_decomposition(H_q)
-	@show L1_AC, Pauli_cost_AC, length(op_list_AC)
-
+	#println("Starting AC-RLF decomposition")
+	#@time op_list_AC, L1_AC, Pauli_cost, Pauli_num = anti_commuting_decomposition(H_q)
+	
 	println("Starting AC-SI decomposition")
-	@time op_list, L1_sorted, Pauli_cost = ac_sorted_inversion(H_q)
+	@time op_list, L1_sorted, Pauli_cost, Pauli_num = ac_sorted_inversion(H_q)
 	@show L1_sorted, length(op_list)
 	println("Pauli=$(Pauli_cost)($(ceil(log2(Pauli_num))))")
-	println("AC-RLF L1=$(L1_AC)($(ceil(log2(length(op_list_AC)))))")
+	#println("AC-RLF L1=$(L1_AC)($(ceil(log2(length(op_list_AC)))))")
 	println("AC-SI L1=$(L1_sorted)($(ceil(log2(length(op_list)))))")
 end
 
 function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=true)
 	#builds fragments from x0 and K0, and compares with full operator h_ferm and its associated tbt
 	tbt_so = tbt_to_so(tbt, spin_orb)
-	SVD_CARTAN_TBTS, SVD_TBTS = tbt_svd(tbt_so, tol=1e-6, spin_orb=true, return_CSA=true)
+	SVD_CARTAN_TBTS, SVD_TBTS = tbt_svd(tbt_so, tol=1e-6, spin_orb=true)
 	α_SVD = size(SVD_TBTS)[1]
 	
 	if typeof(tbt) <: Tuple
@@ -309,7 +309,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 		println("Optimal shifted Hamiltonian:")
 		qubit_treatment(H_opt_bk)
 
-		#exit()
+		exit()
 		#sanity check, final operator recovers full Hamiltonian
 		#= CSA sanity
 		H_diff = h_ferm - CSA_OP
@@ -325,6 +325,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 		H_qubit_diff_SVD = qubit_transform(H_diff_SVD)
 		@show qubit_operator_trimmer(H_qubit_diff_SVD, 1e-5)
 
+		#= Purified SVD sanity
 		println("Difference from shifted SVD fragments:")
 		x = zeros(5)
 		for i in 1:5
@@ -334,5 +335,6 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 		H_diff_SVD = h_ferm - H_SYM_FERM_SVD - tbt_to_ferm(shift, true)
 		H_qubit_diff_SVD = qubit_transform(H_diff_SVD)
 		@show qubit_operator_trimmer(H_qubit_diff_SVD, 1e-5)
+		# =#
 	end
 end

@@ -91,7 +91,7 @@ function cartan_tbt_purification(tbt :: Array, spin_orb=true)
 
 	function cost(x) 
 		shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
-		cartan_tbt_l1_cost(tbt_so - shift, true)
+		return cartan_tbt_l1_cost(tbt_so - shift, true)
 	end
 
 	x0 = zeros(5)
