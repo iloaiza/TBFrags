@@ -1,9 +1,9 @@
 #  TBFrags: Two-Body Fragments package 
 
 Factorizes two-body operators into fragments with special properties as 
-<img src="https://render.githubusercontent.com/render/math?math={H = sum_n c_n U_n* S_n U_n^\dagger}##gh-light-mode-only">
-<img src="https://render.githubusercontent.com/render/math?math={H = sum_n c_n U_n* S_n U_n^\dagger}#gh-dark-mode-only">
-e.g. S_n^2 = 1$, or $S_n$ a CSA polynomial.
+H = sum_n cn Un* Sn Un^\dagger.
+
+Fragment flavours: different classes of Sn to choose from. Unitary flavours: different kinds of Un unitaries. 
 
 
 ## Two-body Hamiltonian CSA decomposition
