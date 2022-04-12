@@ -41,7 +41,7 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=false)
     @sync @distributed for i in 1:num_ops
     	ωl, Ul = eigen(L_mats[i])
 
-	    tbt_svd_CSA = zeros(Complex{Float64},n,n,n,n)
+	    tbt_svd_CSA = zeros(typeof(ωl[1]),n,n,n,n)
 	    for i1 in 1:n
 	    	tbt_svd_CSA[i1,i1,i1,i1] = ωl[i1]^2
 	    end

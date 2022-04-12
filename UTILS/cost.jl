@@ -34,7 +34,21 @@ function cartan_tbt_l1_cost(tbt :: Array, spin_orb=true)
 end
 
 function cartan_tbt_l1_cost(tbt :: Tuple, spin_orb=true)
-	return cartan_obt_l1_cost(tbt[1], spin_orb) + cartan_tbt_l1_cost(tbt[2], spin_orb)
+	tbt_new = (tbt[1], tbt[2])
+	n = size(tbt[1])[1]
+
+	if spin_orb == true
+		s_factor = 1
+	else
+		s_factor = 2
+	end
+
+	for i in 1:n
+		tbt_new[1][i,i] += s_factor*tbt[2][i,i,i,i]
+		tbt_new[2][i,i,i,i] = 0
+	end
+
+	return cartan_obt_l1_cost(tbt_new[1], spin_orb) + cartan_tbt_l1_cost(tbt_new[2], spin_orb)
 end
 
 function cartan_obt_l2_cost(obt :: Array, spin_orb=true)
@@ -66,7 +80,21 @@ function cartan_tbt_l2_cost(tbt :: Array, spin_orb=true)
 end
 
 function cartan_tbt_l2_cost(tbt :: Tuple, spin_orb=true)
-	return cartan_obt_l2_cost(tbt[1], spin_orb) + cartan_tbt_l1_cost(tbt[2], spin_orb)
+	tbt_new = (tbt[1], tbt[2])
+	n = size(tbt[1])[1]
+
+	if spin_orb == true
+		s_factor = 1
+	else
+		s_factor = 2
+	end
+
+	for i in 1:n
+		tbt_new[1][i,i] += s_factor*tbt[2][i,i,i,i]
+		tbt_new[2][i,i,i,i] = 0
+	end
+
+	return cartan_obt_l2_cost(tbt_new[1], spin_orb) + cartan_tbt_l2_cost(tbt_new[2], spin_orb)
 end
 
 function SD_cost(obt, tbt, ob_target, tb_target)

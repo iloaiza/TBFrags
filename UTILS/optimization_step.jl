@@ -228,34 +228,3 @@ function orthogonal_greedy_step_optimization(target, class, frags_arr;
 		return optimize(cost, grad!, x0, BFGS())
 	end
 end
-
-function greedy_step_SD_optimization(ob_target, tb_target, class; spin_orb = false,
-				 grad=false, x0=false, n = size(ob_target)[1], frag_flavour=META.ff, u_flavour=META.uf)
-	u_num = unitary_parameter_number(n)
-	fcl = frag_coeff_length(n, frag_flavour)
-	num_zeros = frag_num_zeros(n, frag_flavour)
-
-	if x0 == false
-		#starting initial random condition, initialize frag.cn to zeros and u_params to [0,2π]
-		x0 = zeros(u_num + fcl)
-		x0[1+num_zeros:end] = 2π*rand(fcl+u_num-num_zeros)
-	end
-
-	function cost(x)
-		return SD_parameter_cost(x, ob_target, tb_target, class, n=n,
-				 spin_orb=spin_orb, frag_flavour=frag_flavour, u_flavour=u_flavour)
-	end
-
-	if grad == false
-		return optimize(cost, x0, BFGS())
-	else
-		error("Gradient not implemented for SD optimization")
-		#=
-		function grad!(storage, x)
-			return parameter_gradient!(storage, x, target, class, n,
-					 spin_orb=spin_orb, frag_flavour=frag_flavour, u_flavour=u_flavour)
-		end
-		return optimize(cost, grad!, x0, BFGS())
-		# =#
-	end
-end
