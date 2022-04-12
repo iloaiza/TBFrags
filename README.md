@@ -1,12 +1,12 @@
-# #############################################################################
-# #################### TBFrags: Two-Body Fragments package ####################
-# #############################################################################
+#  TBFrags: Two-Body Fragments package 
+
+Factorizes two-body operators into fragments with special properties as 
+<img src="https://render.githubusercontent.com/render/math?math={H = sum_n c_n U_n* S_n U_n^\dagger}##gh-light-mode-only">
+<img src="https://render.githubusercontent.com/render/math?math={H = sum_n c_n U_n* S_n U_n^\dagger}#gh-dark-mode-only">
+e.g. S_n^2 = 1$, or $S_n$ a CSA polynomial.
 
 
-Factorizes two-body operators into fragments with special properties as H = sum_n c_n U_n^* S_n U_n (e.g. S_n^2 = 1, or S_n a CSA polynomial).
-
-
-## Two-body Hamiltonian decomposition
+## Two-body Hamiltonian CSA decomposition
 Run in bash:
 'julia -p N H_DECOMP.jl mol_name'
 where N is the number of processors for parallel processing, and mol_name is the name of molecule (e.g. h2).
@@ -53,12 +53,13 @@ Available optimizations (for obtaining decomposition) (parenthesis shows alias f
 - MF: mean-field rotations representing SU(n) group
 - MF-real (MFR): real mean-field rotations, corresponding to SO(n) group
 
-## REQUIRED PACKAGES:
-All required packages and installation info can be seen/installed in install.sh
 
+## SVD DECOMPOSITION AND FERMIONIC SYMMETRY REDUCTION
+Check H_SVD.jl file for methods. Can be ran using e.g. 'julia H_SVD.jl beh2'. This file also runs all qubit-based methods (i.e. anti-commuting decomposition)
+## INSTALLATION
+All required packages and installation info can be seen/installed in install.sh.
 
-### INSTALLATION
-Fast install: execute install.sh in a terminal. Set PY_INSTALL=true in file to install local python environment with necessary packages. Can use custom directory for julia packages by uncommenting JL_DIR lines (useful for computing environments where writing to folder with packages is not allowed while running calculations, e.g. Niagara)
+Fast installation: execute install.sh in a terminal. Set PY_INSTALL=true in file to install local python environment with necessary packages. Can use custom directory for julia packages by uncommenting JL_DIR lines (useful for computing environments where writing to folder with packages is not allowed while running calculations, e.g. Niagara)
 Requires installing julia packages (can be done by accessing the julia package manager in a julia session with ']', then writing: 'add Optim, PyCall, Einsum, HDF5, SharedArrays, Plots, PyPlot, Suppressor, SparseArrays, Arpack, ExpmV'). Can also be installed by running the "install.sh" script on a terminal, set PY_INSTALL to true(false) to do(not) install python environment along with julia packages. Make sure to build PyCall with correct python environment (check install.sh script, or PyCall github page for more info).
 
 Requires/creates a python executable with installed packages:
