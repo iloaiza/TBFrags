@@ -6,8 +6,6 @@
 Factorizes two-body operators into fragments with special properties as H = sum_n c_n U_n^* S_n U_n (e.g. S_n^2 = 1, or S_n a CSA polynomial).
 
 
-######## HOW TO USE:
-
 ## Two-body Hamiltonian decomposition
 Run in bash:
 'julia -p N H_DECOMP.jl mol_name'
@@ -16,40 +14,29 @@ Check run.jl and config.jl for more arguments/options
 e.g.:
 'julia H_DECOMP.jl lih f full-rank-non-iterative CSA MFR 8 true'
     options meaning:
-        - f (abbreviation for false, both can be used): doesn't load initial conditions for restarted calculation
-        - full-rank-non-iterative (can be written as just frni): full-rank optimization starting directly with alpha_max fragments
-        - CSA: type of fragment corresponding to CSA element (i.e. 2nd degree polynomial of orbitals)
-        - MFR: (can be written as MF-real as well) real mean-field rotations pertaining to SO(n) group
-        - 8: maximum number of fragments α_max. For frni optimizations it's the used number of fragments
+- f (abbreviation for false, both can be used): doesn't load initial conditions for restarted calculation
+- full-rank-non-iterative (can be written as just frni): full-rank optimization starting directly with alpha_max fragments
+- CSA: type of fragment corresponding to CSA element (i.e. 2nd degree polynomial of orbitals)
+- MFR: (can be written as MF-real as well) real mean-field rotations pertaining to SO(n) group
+- 8: maximum number of fragments α_max. For frni optimizations it's the used number of fragments
 'julia -p 5 H_DECOMP.jl lih' -> runs lih in 5 processors. Default optimization, fragment, and unitary flavours, as well as default α_max, are shown in config.jl under the names opt_flavour, frag_flavour, u_flavour, and α_max.
-        - true: spin-orb=true, uses spin-orbitals (false for using orbital and spin-orbital symmetry)
+- true: spin-orb=true, uses spin-orbitals (false for using orbital and spin-orbital symmetry)
 
 Most general case, we have
 'julia -p N H_DECOMP.jl mol_name SAVENAME opt_flavour frag_flavour u_flavour α_max'
 for N=number of OpenMP threads (i.e. shared memory parallelization)
-SAVENAME explained in "SAVING RESULTS AND CALCULATION RESTARTS" last section of this file.
+SAVENAME explained in "SAVING RESULTS AND CALCULATION RESTARTS" last section of this file, set to false (or f) if no previous savefile.
 
-## Interaction picture method:
-Run in bash: (e.g. for lih molecule)
-'julia ILCU.jl lih'
-Does greedy CSA decomposition simultaneously of one-body and two-body terms for 1 fragment to build interaction picture.
-Then calculates L1 norms with naive Pauli, and two different flavours of anticommuting groupings
-
-######## IMPLEMENTED FLAVOURS
-Available optimizations (for obtaining decomposition) (parenthesis shows alias for quick referencing):
-    - greedy (g): greedy optimization, obtains each fragment as best guess of remaining operator
-
-    - relaxed-greedy (rg): greedy optimization that allows optimization of main coefficient (c_n) of previously found fragments. Uses classes of previous fragments, along with unitary rotations and any other coefficient which are not multiplicative constant c_n (not useful for CSA-type decompositions)
-
-    - full-rank (fr): performs a full-rank optimization iteratively. It first choses the first fragment in a greedy way, and uses this fragment as an initial condition for the two-fragment decomposition (while allowing the first fragment to change). This goes on, optimizing all n+1 fragments at each step while using the previously optimized n as an initial condition
-
-    - full-rank-non-iterative (frni): performs the full-rank optimization directly with all fragments. If fragment flavour has more than 1 class, the classes of the fragments are generated randomly in run.jl as "class_train" variable
-
-    - orthogonal-greedy (og): greedy optimization where each new fragment is orthogonalized with respect to all previous normalized fragments. Since finding orthogonal fragments is non-trivial, this is performed approximately by adding a penalty to the cost corresponding to the sum of inner products between the new fragment and all old ones, multiplied by a constant λort which can be set in config.jl. Choosing λort=0 means no penalty is added, but this method is still different than just greedy in this case since it optimizes the previous fragments c_n coefficients along with all of the new fragment's parameters
-    (warning! since CSA doesn't have a c_n coefficient, it optimizes all of the previous S_n coefficients)
+### OPTIMIZATION FLAVOURS
+Available optimizations (for obtaining decomposition) (parenthesis shows alias for quick referencing, both might be used in bash):
+- greedy (g): greedy optimization, obtains each fragment as best guess of remaining operator
+- relaxed-greedy (rg): greedy optimization that allows optimization of main coefficient (c_n) of previously found fragments. Uses classes of previous fragments, along with unitary rotations and any other coefficient which are not multiplicative constant c_n (not useful for CSA-type decompositions)
+- full-rank (fr): performs a full-rank optimization iteratively. It first choses the first fragment in a greedy way, and uses this fragment as an initial condition for the two-fragment decomposition (while allowing the first fragment to change). This goes on, optimizing all n+1 fragments at each step while using the previously optimized n as an initial condition
+- full-rank-non-iterative (frni): performs the full-rank optimization directly with all fragments. If fragment flavour has more than 1 class, the classes of the fragments are generated randomly in run.jl as "class_train" variable
+- orthogonal-greedy (og): greedy optimization where each new fragment is orthogonalized with respect to all previous normalized fragments. Since finding orthogonal fragments is non-trivial, this is performed approximately by adding a penalty to the cost corresponding to the sum of inner products between the new fragment and all old ones, multiplied by a constant λort which can be set in config.jl. Choosing λort=0 means no penalty is added, but this method is still different than just greedy in this case since it optimizes the previous fragments c_n coefficients along with all of the new fragment's parameters (warning! since CSA doesn't have a c_n coefficient, it optimizes all of the previous S_n coefficients. Not debugged for CSASD or any method which includes one-body tensors)
 
 
-## Available fragments (S_n's):
+### FRAGMENT FLAVOURS (S_n's):
 - CSASD: CSA fragments which include one-body and two-body tensors
 - CGMFR: uses all 10 classes of two-body Cartan reflections
 - GMFR: only uses 3 initially proposed classes of two-body Cartan reflections
@@ -62,10 +49,9 @@ Available optimizations (for obtaining decomposition) (parenthesis shows alias f
 - U11R: builds unitary operator from linear phases combination of projectors with real constraint (i.e. U11+U11'). This corresponds to TBTON plus the last five reflection classes (which correspond to 3 and 4-orbital classes)
 - TBPOL: two-body, two-orbital polynomial with square-root imaginary unitarization
 
-Available unitary rotations (U_n's):
-    - MF: mean-field rotations representing SU(n) group
-
-    - MF-real (MFR): real mean-field rotations, corresponding to SO(n) group
+### UNITARY FLAVOURS (U_n's):
+- MF: mean-field rotations representing SU(n) group
+- MF-real (MFR): real mean-field rotations, corresponding to SO(n) group
 
 
 ## REQUIRED PACKAGES:
@@ -73,7 +59,7 @@ All required packages and installation info can be seen/installed in install.sh
 
 
 ### INSTALLATION
-Fast install: execute install.sh in a terminal. Set PY_INSTALL=true to install local python environment with necessary packages. Can use custom directory for julia packages by uncommenting JL_DIR lines (useful for computing environments where writing to folder with packages is not allowed while running calculations, e.g. Niagara)
+Fast install: execute install.sh in a terminal. Set PY_INSTALL=true in file to install local python environment with necessary packages. Can use custom directory for julia packages by uncommenting JL_DIR lines (useful for computing environments where writing to folder with packages is not allowed while running calculations, e.g. Niagara)
 Requires installing julia packages (can be done by accessing the julia package manager in a julia session with ']', then writing: 'add Optim, PyCall, Einsum, HDF5, SharedArrays, Plots, PyPlot, Suppressor, SparseArrays, Arpack, ExpmV'). Can also be installed by running the "install.sh" script on a terminal, set PY_INSTALL to true(false) to do(not) install python environment along with julia packages. Make sure to build PyCall with correct python environment (check install.sh script, or PyCall github page for more info).
 
 Requires/creates a python executable with installed packages:
