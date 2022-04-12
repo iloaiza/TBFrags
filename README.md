@@ -53,7 +53,6 @@ Available optimizations (for obtaining decomposition) (parenthesis shows alias f
 - MF: mean-field rotations representing SU(n) group
 - MF-real (MFR): real mean-field rotations, corresponding to SO(n) group
 
-
 ## REQUIRED PACKAGES:
 All required packages and installation info can be seen/installed in install.sh
 
