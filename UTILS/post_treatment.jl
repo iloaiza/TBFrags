@@ -93,8 +93,8 @@ function L1_frags_treatment(TBTS, CARTAN_TBTS, spin_orb, α_tot = size(TBTS)[1],
 	E_RANGES = SharedArray(zeros(α_tot,2)) #holds eigenspectrum boundaries for each operator
 	
 	@sync @distributed for i in 1:α_tot
-		println("L1 treatment of fragment $i")
-		t00 = time()
+		#println("L1 treatment of fragment $i")
+		#t00 = time()
 		#build qubit operator for final sanity check
 		
 		CSA_L1[i] = cartan_tbt_l1_cost(CARTAN_TBTS[i,:,:,:,:], spin_orb)
@@ -123,7 +123,7 @@ function L1_frags_treatment(TBTS, CARTAN_TBTS, spin_orb, α_tot = size(TBTS)[1],
 		@time ref_sol = car2lcu.TBT_to_L1opt_LCU(tbt_triang, n_qubit, solmtd="l1ip", pout=true)
 		@show ref_sol["csa_l1"]
 		# =#
-		println("Finished fragment $i after $(time() - t00) seconds...")
+		#println("Finished fragment $i after $(time() - t00) seconds...")
 	end
 
 	TBT_TOT = TBTS[1,:,:,:,:]
@@ -347,18 +347,18 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true)
 	_, _, Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt = casimirs_builder(n_qubit)
 
 	println("Starting L1 treatment for SVD fragments")
-	SVD_L1, SVD_E_RANGES, SVD_OP = L1_frags_treatment(SVD_TBTS, SVD_CARTAN_TBTS, true)
+	@time SVD_L1, SVD_E_RANGES, SVD_OP = L1_frags_treatment(SVD_TBTS, SVD_CARTAN_TBTS, true)
 	println("Starting L1 treatment for SVD fragments of purified Hamiltonian")
-	PUR_SVD_L1, PUR_SVD_E_RANGES, PUR_SVD_OP = L1_frags_treatment(PUR_SVD_TBTS, PUR_SVD_CARTAN_TBTS, true)
+	@time PUR_SVD_L1, PUR_SVD_E_RANGES, PUR_SVD_OP = L1_frags_treatment(PUR_SVD_TBTS, PUR_SVD_CARTAN_TBTS, true)
 	
 	println("Calculating range of full hamiltonian:")
-	Etot_r = op_range(h_ferm)
+	@time Etot_r = op_range(h_ferm)
 	@show Etot_r
 	@show (Etot_r[2] - Etot_r[1])/2
 
 	println("Showing range of symmetry-optimized hamiltonian")
 	H_sym_opt = tbt_to_ferm(tbt_ham_opt, true)
-	Etot_r = op_range(H_sym_opt)
+	@time Etot_r = op_range(H_sym_opt)
 	@show Etot_r
 	@show (Etot_r[2] - Etot_r[1])/2
 	full_shift = x_opt[1]*Nα_tbt + x_opt[2]*Nβ_tbt + x_opt[3]*Nα2_tbt + x_opt[4]*NαNβ_tbt + x_opt[5]*Nβ2_tbt
@@ -377,10 +377,12 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true)
 		println("Finished fermionic routine, starting qubit methods and final numbers...")
 		H_full_q = qubit_transform(h_ferm)
 		ψ_hf = get_qubit_wavefunction(H_full_q, "hf", num_elecs)
-		ψ_fci = get_qubit_wavefunction(H_full_q, "fci", num_elecs)
+		println("Obtaining fci wavefunction for full Hamiltonian")
+		@time ψ_fci = get_qubit_wavefunction(H_full_q, "fci", num_elecs)
 		H_opt_q = qubit_transform(H_sym_opt)
-		ψ_hf = get_qubit_wavefunction(H_opt_q, "hf", num_elecs)
-		ψ_fci = get_qubit_wavefunction(H_opt_q, "fci", num_elecs)
+		#ψ_hf = get_qubit_wavefunction(H_opt_q, "hf", num_elecs)
+		#println("Obtaining fci wavefunction for tapered Hamiltonian")
+		#@time ψ_fci = get_qubit_wavefunction(H_opt_q, "fci", num_elecs)
 		H_tapered = tap.taper_H_qubit(H_full_q, ψ_hf, ψ_hf)
 		H_tapered_sym = tap.taper_H_qubit(H_opt_q, ψ_hf, ψ_hf)
 
