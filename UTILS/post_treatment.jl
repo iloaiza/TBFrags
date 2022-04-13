@@ -41,46 +41,46 @@ function CSA_tbt_range(tbt_CSA_so, triang=false)
 	return CSA_λs_evals(λs, n)
 end
 
+function py_sparse_import(py_sparse_mat; imag_tol=1e-16)
+	#transform python sparse matrix into julia sparse matrix
+	row, col, vals = scipy.sparse.find(py_sparse_mat)
+	py_shape = py_sparse_mat.get_shape()
+	n = py_shape[1]
+	
+	if sum(imag.(vals)) < imag_tol
+		vals = real.(vals)
+	end
+
+	sparse_mat = sparse(row .+1, col .+1, vals, n, n)
+
+	#@show sum(abs2.(sparse_mat - py_sparse_mat.todense()))
+
+	return sparse_mat
+end
 
 
-
-function op_range(op, n_qubit; transformation=transformation, imag_tol=1e-16, ncv=minimum([50,2^n_qubit]))
+function op_range(op; transformation=transformation, imag_tol=1e-16, ncv=minimum([50,2^n_qubit]))
 	#Calculates maximum and minimum eigenvalues for fermionic operator
-	op_qubit = qubit_transform(op)
+	op_qubit = qubit_transform(op, transformation)
 	op_py_sparse_mat = of.qubit_operator_sparse(op_qubit)
-	sparse_op = spzeros(2^n_qubit, 2^n_qubit)
-	rows, cols = op_py_sparse_mat.nonzero()
-	IMAG_FLAG = false
-	for el_num in 1:length(rows)
-		r_num = rows[el_num]
-		c_num = cols[el_num]
-		if imag(op_py_sparse_mat[r_num,c_num]) < imag_tol
-			sparse_op[r_num+1, c_num+1] = real(op_py_sparse_mat[r_num,c_num])
-		else
-			IMAG_FLAG = true
-			break
-		end
-	end
-
-	if IMAG_FLAG == true
-		sparse_op = spzeros(Complex{Float64}, 2^n_qubit, 2^n_qubit)
-		for el_num in 1:length(rows)
-			r_num = rows[el_num]
-			c_num = cols[el_num]
-			sparse_op[r_num+1, c_num+1] = op_py_sparse_mat[r_num,c_num]
-		end
-	end
+	sparse_op = py_sparse_import(op_py_sparse_mat, imag_tol=imag_tol)
 
 	# =
-	E_max,_ = eigs(sparse_op, nev=1, which=:LR, maxiter = 500, tol=1e-6, ncv=ncv)
-	E_min,_ = eigs(sparse_op, nev=1, which=:SR, maxiter = 500, tol=1e-6, ncv=ncv)
+	E_max,_ = eigs(sparse_op, nev=1, which=:LR, maxiter = 500, tol=1e-3, ncv=ncv)
+	E_min,_ = eigs(sparse_op, nev=1, which=:SR, maxiter = 500, tol=1e-3, ncv=ncv)
 	E_range = real.([E_min[1], E_max[1]])
 	# =#
 
 	#= Debug, checks it's the same as full diagonalization
 	E, _ = eigen(collect(sparse_op))
 	E = real.(E)
+	@show minimum(E)
+	@show maximum(E)
 	@show E_range - [minimum(E), maximum(E)]
+
+	of_eigen = of.eigenspectrum(op_qubit)
+	@show minimum(of_eigen)
+	@show maximum(of_eigen)
 	# =#
 	
 	
