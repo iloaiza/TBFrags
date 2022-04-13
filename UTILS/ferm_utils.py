@@ -456,4 +456,7 @@ def get_openfermion_hf(n_qubits, n_electrons):
 
     # Construct sparse matrix
     dim = 2**n_qubits
-    return sp.sparse.csr_matrix(((1,), (idx_tuple, idx_tuple)), shape=(dim, dim))
+    hf_vec = np.zeros(dim)
+    hf_vec[idx] = 1
+    return hf_vec
+    #return sp.sparse.csr_matrix(((1,), (idx_tuple, idx_tuple)), shape=(dim, dim))
