@@ -8,7 +8,7 @@ const reps = 1 #number of repetitions, useful for better exploring initial condi
 ### Molecular parameters/basis
 const wfs = "fci" #wavefunction type for <psi|OPERATOR|psi> calculations, accepts "fci" or "hf"
 const basis = "sto3g" #basis for hamiltonian
-const transformation = "bravyi_kitaev" #transformation for fermionic to qubit representation
+const transformation = "jw" #transformation for fermionic to qubit representation
 const geometry = 1.0  #molecular geometry
 
 const saving = true #true saves x vector and K (class-train for methods with more than one class) at each step of the optimization algorithm
@@ -23,7 +23,7 @@ global NAME = "NAME"
 
 global DATAFOLDER = "SAVE/"
 const NORM_ORDERED = false #whether operators are normal ordered automatically
-const NORM_BRAKETS = true #whether braket operations (e.g. variances and expectations) automatically normalize operator before calculation, shouldn't change results
+const NORM_BRAKETS = false #whether braket operations (e.g. variances and expectations) automatically normalize operator before calculation, shouldn't change results
 
 const POST = true #do post-processing once fragments are obtained (get expectation values and variances)
 const PLOT = false #do correlation plot, requires POST=true
