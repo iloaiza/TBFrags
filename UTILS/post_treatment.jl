@@ -235,7 +235,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	# =#
 
 	println("Calculating range of full hamiltonian:")
-	Etot_r = op_range(h_ferm, n_qubit)
+	Etot_r = op_range(h_ferm)
 	@show Etot_r
 	@show (Etot_r[2] - Etot_r[1])/2
 
@@ -255,7 +255,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 
 	println("Showing range of symmetry-optimized hamiltonian")
 	H_sym_opt = tbt_to_ferm(tbt_ham_opt, true)
-	Etot_r = op_range(H_sym_opt, n_qubit)
+	Etot_r = op_range(H_sym_opt)
 	@show Etot_r
 	@show (Etot_r[2] - Etot_r[1])/2
 	full_shift = x_opt[1]*Nα_tbt + x_opt[2]*Nβ_tbt + x_opt[3]*Nα2_tbt + x_opt[4]*NαNβ_tbt + x_opt[5]*Nβ2_tbt
@@ -281,24 +281,24 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 
 	if Q_TREAT == true
 		println("Finished fermionic routine, starting qubit methods and final numbers...")
-		H_full_bk = qubit_transform(h_ferm)
-		#H_sym_bk = qubit_transform(H_SYM_FERM)
-		#H_svd_bk = qubit_transform(H_SYM_FERM_SVD)
-		H_opt_bk = qubit_transform(H_sym_opt)
-		#H_tapered = tap.taper_H_qubit(H_full_bk)
-		#H_tapered_sym = tap.taper_H_qubit(H_sym_bk)
+		H_full_q = qubit_transform(h_ferm)
+		#H_sym_q = qubit_transform(H_SYM_FERM)
+		#H_svd_q = qubit_transform(H_SYM_FERM_SVD)
+		H_opt_q = qubit_transform(H_sym_opt)
+		#H_tapered = tap.taper_H_qubit(H_full_q)
+		#H_tapered_sym = tap.taper_H_qubit(H_sym_q)
 
 		println("Full Hamiltonian:")
-		qubit_treatment(H_full_bk)
+		qubit_treatment(H_full_q)
 
 		#println("CSA shifted Hamiltonian:")
-		#qubit_treatment(H_sym_bk)
+		#qubit_treatment(H_sym_q)
 
 		#println("SVD shifted Hamiltonian:")
-		#qubit_treatment(H_svd_bk)
+		#qubit_treatment(H_svd_q)
 
 		println("Optimal shifted Hamiltonian:")
-		qubit_treatment(H_opt_bk)
+		qubit_treatment(H_opt_q)
 
 		#exit()
 		#sanity check, final operator recovers full Hamiltonian
@@ -352,13 +352,13 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true)
 	PUR_SVD_L1, PUR_SVD_E_RANGES, PUR_SVD_OP = L1_frags_treatment(PUR_SVD_TBTS, PUR_SVD_CARTAN_TBTS, true)
 	
 	println("Calculating range of full hamiltonian:")
-	Etot_r = op_range(h_ferm, n_qubit)
+	Etot_r = op_range(h_ferm)
 	@show Etot_r
 	@show (Etot_r[2] - Etot_r[1])/2
 
 	println("Showing range of symmetry-optimized hamiltonian")
 	H_sym_opt = tbt_to_ferm(tbt_ham_opt, true)
-	Etot_r = op_range(H_sym_opt, n_qubit)
+	Etot_r = op_range(H_sym_opt)
 	@show Etot_r
 	@show (Etot_r[2] - Etot_r[1])/2
 	full_shift = x_opt[1]*Nα_tbt + x_opt[2]*Nβ_tbt + x_opt[3]*Nα2_tbt + x_opt[4]*NαNβ_tbt + x_opt[5]*Nβ2_tbt
@@ -375,16 +375,26 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true)
 
 	if Q_TREAT == true
 		println("Finished fermionic routine, starting qubit methods and final numbers...")
-		H_full_bk = qubit_transform(h_ferm)
-		H_opt_bk = qubit_transform(H_sym_opt)
-		#H_tapered = tap.taper_H_qubit(H_full_bk)
-		#H_tapered_sym = tap.taper_H_qubit(H_sym_bk)
+		H_full_q = qubit_transform(h_ferm)
+		ψ_hf = get_qubit_wavefunction(H_full_q, "hf", num_elecs)
+		ψ_fci = get_qubit_wavefunction(H_full_q, "fci", num_elecs)
+		H_opt_q = qubit_transform(H_sym_opt)
+		ψ_hf = get_qubit_wavefunction(H_opt_q, "hf", num_elecs)
+		ψ_fci = get_qubit_wavefunction(H_opt_q, "fci", num_elecs)
+		H_tapered = tap.taper_H_qubit(H_full_q, ψ_hf, ψ_hf)
+		H_tapered_sym = tap.taper_H_qubit(H_opt_q, ψ_hf, ψ_hf)
 
 		println("Full Hamiltonian:")
-		qubit_treatment(H_full_bk)
+		qubit_treatment(H_full_q)
 
 		println("Optimal shifted Hamiltonian:")
-		qubit_treatment(H_opt_bk)
+		qubit_treatment(H_opt_q)
+
+		println("Tapered Hamiltonian:")
+		qubit_treatment(H_tapered)
+
+		println("Tapered symmetry-shifted Hamiltonian:")
+		qubit_treatment(H_tapered_sym)
 
 		#exit()
 		# = SVD sanity

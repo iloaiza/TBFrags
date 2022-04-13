@@ -216,9 +216,25 @@ end
 function get_wavefunction(h_ferm, wfs, num_elecs = 0)
 	if wfs == "fci"
 		e_fci, psi = of.get_ground_state(of.get_sparse_operator(h_ferm))
+		println("Full CI energy is $e_fci")
+	else
+		error("Trying to obtain non-fci wavefunction, not defined for not qubit systems! If operator is in qubits already, try get_qubit_wavefunction instead.")
+	end
+
+	return psi
+end
+
+function get_qubit_wavefunction(h_qubit, wfs, num_elecs = 0)
+	#returns wavefunction (i.e. not openfermion density matrix format) for Hamiltonian electronic state
+	#use wfs="fci" of "hf" for full configuration interaction or hartree-fock wavefunction
+	if wfs == "fci"
+		e_fci, psi = of.get_ground_state(of.get_sparse_operator(h_qubit))
+		println("Full CI energy is $e_fci")
 	elseif wfs == "hf"
-		println("Obtaining Hartree-Fock wavefunction with $num_elecs electrons")
-		psi = fermionic.get_openfermion_hf(of.count_qubits(h_ferm), num_elecs)
+		println("Obtaining Hartree-Fock wavefunction with $num_elecs electrons, make sure qubit operator is in Jordan-Wigner form...")
+		psi = fermionic.get_openfermion_hf(of.count_qubits(h_qubit), num_elecs)
+		e_hf = of.expectation(of.get_sparse_operator(h_qubit), psi)
+		println("Hartree-Fock energy is $(real(e_hf))")
 	end
 
 	return psi
@@ -303,4 +319,13 @@ function qubit_operator_trimmer(Qop, tol=1e-3)
 	println("Trimmed qubit operator of $trim_count words out of $(length(Qop.terms)), L1 norm of removed coefficients is $trim_abs")
 
 	return H_trim
+end
+
+function of_wavefunction_to_vector(psi, tol=1e-8)
+	psi_sparse = py_sparse_import(psi)
+	@time E,psi = eigs(psi_sparse, nev=1, which=:LM)
+    if abs(1-E[1]) >tol
+        println("Warning, diagonalizing pure density matrix resulted in eig=$(E[1])! Using corresponding wavefunction as pure")
+    end
+    return psi[:,1]
 end
