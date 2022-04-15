@@ -118,7 +118,7 @@ function SD_cost(obt, tbt, ob_target, tb_target)
 	#return sum(abs.(ob_diff)) + sum(abs.(tb_diff)) #L1 cost
 end
 		
-function tbt_cost(tbt, target :: Array)
+function tbt_cost(tbt, target)
 	if tbt == 0
 		diff = target
 	elseif target == 0

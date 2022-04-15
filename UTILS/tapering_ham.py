@@ -5,6 +5,7 @@ import numpy as np
 
 def taper_H_qubit(Hq : of.QubitOperator, wf, gs, tiny=1e-10):
    n_qubits = of.count_qubits(Hq)
+   n_qubits_ini = n_qubits
    e_ini = of.expectation(of.get_sparse_operator(Hq, n_qubits), gs)
    H_PVL = psvu.PauliVecList(n_qubits, Hq)
    stabilizers = H_PVL.gen_stabilizers()
@@ -27,4 +28,5 @@ def taper_H_qubit(Hq : of.QubitOperator, wf, gs, tiny=1e-10):
    if np.abs(e_ini - e_fin) > tiny:
       print("Warning, tapering routine modified expectation value from {} to {}".format(e_ini, e_fin))
 
+   print("Tapered {} qubits from Hamiltonian".format(n_qubits_ini - n_qubits))
    return Hq

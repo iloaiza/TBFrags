@@ -22,4 +22,4 @@ tbt, h_ferm, num_elecs = full_ham_tbt(mol_name, basis=basis, ferm=true, spin_orb
 n = size(tbt)[1]
 n_qubit = n
 
-H_TREATMENT(tbt, h_ferm, true)
+H_TREATMENT(tbt, h_ferm, true, S2=true)

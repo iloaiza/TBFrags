@@ -1,9 +1,15 @@
-function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=false)
+function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=false, tiny=1e-12)
 	println("Starting SVD routine")
 	n = size(tbt)[1]
 	N = n^2
 
+
+	tbt_full = reshape(tbt, (N,N))
 	tbt_res = Symmetric(reshape(tbt, (N,N)))
+	if sum(abs.(tbt_full - tbt_res)) > tiny
+		println("Non-symmetric two-body tensor as input for SVD routine, calculations might have errors...")
+		tbt_res = tbt_full
+	end
 
 	println("Diagonalizing two-body tensor")
 	@time Λ,U = eigen(tbt_res)

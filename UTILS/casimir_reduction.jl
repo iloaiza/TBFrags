@@ -1,5 +1,5 @@
 #reduces Cartan polynomials using Casimir operators
-function casimirs_builder(n_qubit; debug=false)
+function casimirs_builder(n_qubit; debug=false, S2=false)
 	n_orbs = Int(n_qubit/2)
 	N_obt = collect(Diagonal(ones(n_qubit)))
 	Sz_obt = 0.5*copy(N_obt)
@@ -56,7 +56,6 @@ function casimirs_builder(n_qubit; debug=false)
 		N_op = of.number_operator(n_qubit)
 		N2 = N_op * N_op
 		Sz = of.sz_operator(n_orbs)
-		#S2 = of.s_squared_operator(n_orbs)
 		N_α = 0.5*of_simplify(N_op + 2*Sz)
 		N_β = of_simplify(N_op - N_α)
 		@show of_simplify(N_op - obt_to_ferm(N_obt, true))
@@ -73,7 +72,68 @@ function casimirs_builder(n_qubit; debug=false)
 		@show of_simplify(N_β*N_β - tbt_to_ferm(Nβ2_tbt, true))
 	end
 	
-	return Nα_obt, Nβ_obt, Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt
+
+	if S2 == false
+		return [Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt]
+	else
+		S2_tbt = zeros(n_qubit,n_qubit,n_qubit,n_qubit)
+		for i in 1:n_orbs
+			ka = 2i-1
+			kb = 2i
+			S2_tbt[ka,ka,ka,ka] += 1
+			S2_tbt[kb,kb,kb,kb] += 1
+			S2_tbt[ka,ka,kb,kb] += -1
+			S2_tbt[kb,kb,ka,ka] += -1
+			S2_tbt[ka,kb,kb,ka] += 2
+			S2_tbt[kb,ka,ka,kb] += 2
+		end
+
+		for i in 1:n_orbs
+			for j in 1:n_orbs
+				if i != j
+					ka = 2i-1
+					kb = 2i
+					la = 2j-1
+					lb = 2j
+					S2_tbt[ka,kb,lb,la] += 1
+					S2_tbt[lb,la,ka,kb] += 1
+					S2_tbt[kb,ka,la,lb] += 1
+					S2_tbt[la,lb,kb,ka] += 1
+					S2_tbt[ka,ka,la,la] += 0.5
+					S2_tbt[la,la,ka,ka] += 0.5
+					S2_tbt[kb,kb,lb,lb] += 0.5
+					S2_tbt[lb,lb,kb,kb] += 0.5
+					S2_tbt[ka,ka,lb,lb] += -0.5
+					S2_tbt[lb,lb,ka,ka] += -0.5
+					S2_tbt[kb,kb,la,la] += -0.5
+					S2_tbt[la,la,kb,kb] += -0.5
+				end
+			end
+		end
+
+		S2_tbt /= 4
+
+		if debug == true
+			S2_op = of.s_squared_operator(n_orbs)
+			@show of_simplify(S2_op - tbt_to_ferm(S2_tbt, true))
+		end
+
+		return [Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt, S2_tbt]
+	end
+end
+
+function shift_builder(x, S_arr; S2=false)
+	# S2 = false implies S_arr = [Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt]
+	# otherwise S_arr = [Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt, S2_tbt]
+	# builds shift corresponding to x value
+	
+	shift = x[1] * S_arr[1]
+
+	for i in 2:length(S_arr)
+		shift += x[i] * S_arr[i]
+	end
+
+	return shift
 end
 
 function cartan_tbt_purification(tbt :: Array, spin_orb=true)
@@ -87,10 +147,11 @@ function cartan_tbt_purification(tbt :: Array, spin_orb=true)
 
 	n_qubit = size(tbt_so)[1]
 
-	_, _, Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt = casimirs_builder(n_qubit)
+	S_arr = casimirs_builder(n_qubit, S2=false)
 
 	function cost(x) 
-		shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
+		#shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
+		shift = shift_builder(x, S_arr, S2=false)
 		#return cartan_tbt_l1_cost(tbt_so - shift, true)
 		return cartan_tbt_l2_cost(tbt_so - shift, true)
 	end
@@ -102,7 +163,8 @@ function cartan_tbt_purification(tbt :: Array, spin_orb=true)
 	#@show cost(x0)
 	#@show sol.minimum
 	x = sol.minimizer
-	shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
+	#shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
+	shift = shift_builder(x, S_arr, S2=false)
 
 	return tbt_so - shift, sol.minimizer
 end
@@ -117,4 +179,45 @@ function cartan_tbt_purification(tbt :: Tuple, spin_orb=true)
 	end
 
 	return cartan_tbt_purification(tbt_so, true)
+end
+
+function symmetry_cuadratic_optimization(tbt :: Array, spin_orb=true; S2=true)
+	println("Running symmetry reduction routine with S2=$S2")
+	#finds optimal shift by minimizing cost of tbt
+	#includes Nα, Nβ, Nα², Nα*Nβ, Nβ², and S² operators for symmetries
+	if spin_orb == false
+		tbt_so = tbt_orb_to_so(tbt)
+	else
+		tbt_so = tbt
+	end
+	n_qubit = size(tbt_so)[1]
+
+	S_arr = casimirs_builder(n_qubit, S2=S2)
+
+	s_len = length(S_arr)
+
+	A_mat = zeros(s_len,s_len)
+	v_vec = zeros(s_len)
+
+	for i in 1:s_len
+		v_vec[i] = sum(tbt_so .* S_arr[i])
+	end
+
+	for i in 1:s_len
+		for j in i:s_len
+			A_mat[i,j] = sum(S_arr[i] .* S_arr[j])
+			A_mat[j,i] = A_mat[i,j]
+		end
+	end
+
+	A_inv = inv(A_mat)
+
+	x_vec = A_inv * v_vec
+
+	tbt_sym = copy(tbt_so)
+	for i in 1:s_len
+		tbt_sym -= x_vec[i] * S_arr[i]
+	end
+
+	return tbt_sym, x_vec
 end

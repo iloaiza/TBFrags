@@ -110,6 +110,20 @@ function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1
 	end
 end
 
+function ferm_to_tbt(op)
+	#transform a 1+2 body fermionic operator into a single two-body tensor (in spin orbitals)
+	op_norm = of.normal_ordered(op)
+	tbt = fermionic.get_chemist_tbt(op_norm, spin_orb=true)
+	h1b = op_norm - tbt_to_ferm(tbt, true)
+    h1b = of_simplify(h1b)
+	obt = fermionic.get_obt(h1b, spin_orb=true)
+	tbt += obt_to_tbt(obt)
+
+	#@show of_simplify(op - tbt_to_ferm(tbt, true))
+
+	return tbt
+end
+
 function tbt_to_ferm(tbt :: Array, spin_orb; norm_ord = NORM_ORDERED)
 	if norm_ord == true
 		return of.normal_ordered(fermionic.get_ferm_op(tbt, spin_orb))
