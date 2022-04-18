@@ -1,5 +1,8 @@
 #reduces Cartan polynomials using Casimir operators
-function casimirs_builder(n_qubit; debug=false, S2=false)
+function casimirs_builder(n_qubit; debug=false, S2=false, one_body=false)
+	#builds Nα, Nβ, NαNβ, Nα², Nβ²
+	#S2=true for also building S²
+	#one_body=true returns one body tensors as well (just for Nα and Nβ)
 	n_orbs = Int(n_qubit/2)
 	N_obt = collect(Diagonal(ones(n_qubit)))
 	Sz_obt = 0.5*copy(N_obt)
@@ -72,10 +75,10 @@ function casimirs_builder(n_qubit; debug=false, S2=false)
 		@show of_simplify(N_β*N_β - tbt_to_ferm(Nβ2_tbt, true))
 	end
 	
+	OB_arr = [Nα_obt, Nβ_obt]
+	TB_arr = [Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt]
 
-	if S2 == false
-		return [Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt]
-	else
+	if S2 == true
 		S2_tbt = zeros(n_qubit,n_qubit,n_qubit,n_qubit)
 		for i in 1:n_orbs
 			ka = 2i-1
@@ -118,7 +121,13 @@ function casimirs_builder(n_qubit; debug=false, S2=false)
 			@show of_simplify(S2_op - tbt_to_ferm(S2_tbt, true))
 		end
 
-		return [Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt, S2_tbt]
+		push!(TB_arr, S2_tbt)
+	end
+
+	if one_body == false
+		return TB_arr
+	else
+		return OB_arr, TB_arr
 	end
 end
 
@@ -136,21 +145,16 @@ function shift_builder(x, S_arr; S2=false)
 	return shift
 end
 
-function cartan_tbt_purification(tbt :: Array, spin_orb=true)
+function cartan_tbt_purification(tbt, spin_orb=true)
 	# input: cartan tbt operator (and whether it is in spin-orbitals or orbitals)
 	# output: cartan tbt operator in spin-orbitals with shifted symmetries, and shift constants
-	if spin_orb == false
-		tbt_so = tbt_orb_to_so(tbt)
-	else
-		tbt_so = tbt
-	end
+	tbt_so = tbt_to_so(tbt, spin_orb)
 
 	n_qubit = size(tbt_so)[1]
 
 	S_arr = casimirs_builder(n_qubit, S2=false)
 
 	function cost(x) 
-		#shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
 		shift = shift_builder(x, S_arr, S2=false)
 		#return cartan_tbt_l1_cost(tbt_so - shift, true)
 		return cartan_tbt_l2_cost(tbt_so - shift, true)
@@ -163,36 +167,22 @@ function cartan_tbt_purification(tbt :: Array, spin_orb=true)
 	#@show cost(x0)
 	#@show sol.minimum
 	x = sol.minimizer
-	#shift = x[1]*Nα_tbt + x[2]*Nβ_tbt + x[3]*Nα2_tbt + x[4]*NαNβ_tbt + x[5]*Nβ2_tbt
 	shift = shift_builder(x, S_arr, S2=false)
 
 	return tbt_so - shift, sol.minimizer
 end
 
-function cartan_tbt_purification(tbt :: Tuple, spin_orb=true)
-	# input: cartan tbt operator tuple (obt,tbt) (and whether it is in spin-orbitals or orbitals)
-	# output: cartan two-body tensor operator in spin-orbitals with shifted symmetries, and shift constants
-	if spin_orb == false
-		tbt_so = obt_to_tbt(obt_orb_to_so(tbt[1])) + tbt_orb_to_so(tbt[2])
-	else
-		tbt_so = obt_to_tbt(tbt[1]) + tbt[2] 
-	end
-
-	return cartan_tbt_purification(tbt_so, true)
-end
-
-function symmetry_cuadratic_optimization(tbt :: Array, spin_orb=true; S2=true)
-	println("Running symmetry reduction routine with S2=$S2")
-	#finds optimal shift by minimizing cost of tbt
-	#includes Nα, Nβ, Nα², Nα*Nβ, Nβ², and S² operators for symmetries
-	if spin_orb == false
-		tbt_so = tbt_orb_to_so(tbt)
-	else
-		tbt_so = tbt
-	end
+function symmetry_cuadratic_optimization(tbt, spin_orb=true; S2=true, S_arr=false)
+	#finds optimal shift by minimizing fermionic cost of ||tbt - ∑si Si||², with Si symmetries
+	#includes Nα, Nβ, Nα², Nα*Nβ, Nβ², (and S² if S2=true) operators for symmetries
+	#S_arr input if we don't want to build the symmetries every time (for quicker cost function)
+	#returns tbt - ∑si Si and si vector
+	tbt_so = tbt_to_so(tbt, spin_orb)
 	n_qubit = size(tbt_so)[1]
 
-	S_arr = casimirs_builder(n_qubit, S2=S2)
+	if S_arr == false
+		S_arr = casimirs_builder(n_qubit, S2=S2)
+	end
 
 	s_len = length(S_arr)
 
@@ -220,4 +210,84 @@ function symmetry_cuadratic_optimization(tbt :: Array, spin_orb=true; S2=true)
 	end
 
 	return tbt_sym, x_vec
+end
+
+
+function mean_field_symmetry_cost(tbt, spin_orb, u_params, S_arr, A_inv, u_flavour, n=size(obt)[1]; S2=false, cartan=false)
+	#finds optimal symmetry coefficients for u_params rotation of tbt
+	#cartan=true means tbt is Cartan polynomial
+	if cartan == true
+		tbt_rot = unitary_rotation(u_params, tbt, n, u_flavour)
+	else
+		tbt_rot = generalized_unitary_rotation(u_params, tbt, n, u_flavour)
+	end
+	tbt_rot_so = tbt_to_so(tbt_rot, spin_orb)
+
+	s_len = length(S_arr)
+
+	v_vec = zeros(s_len)
+
+	for i in 1:s_len
+		v_vec[i] = sum(tbt_rot_so .* S_arr[i])
+	end
+
+	x_vec = A_inv * v_vec
+
+	tbt_sym = copy(tbt_rot_so)
+	for i in 1:s_len
+		tbt_sym -= x_vec[i] * S_arr[i]
+	end
+
+	return tbt_cost(tbt_sym, 0)
+end
+
+function orbital_mean_field_symmetry_reduction(tbt :: Tuple, spin_orb; u_flavour=MF_real(), S2=false, cartan=false)
+	# set cartan = true for faster rotations, only works on tbts coming from Cartan polynomial
+	# finds the mean-field rotation for which ||U*tbt*U' - ∑si Si||² is minimized
+	if typeof(tbt) <: Tuple
+		n = size(tbt[1])[1]
+	else
+		n = size(tbt)[1]
+	end
+
+	if spin_orb == true
+		n_qubit = n
+	else
+		n_qubit = 2n
+	end
+
+
+	S_arr = casimirs_builder(n_qubit, S2=S2, one_body=false)
+	s_len = length(S_arr)
+	A_mat = zeros(s_len,s_len)
+	
+	for i in 1:s_len
+		for j in i:s_len
+			A_mat[i,j] = sum(S_arr[i] .* S_arr[j])
+			A_mat[j,i] = A_mat[i,j]
+		end
+	end
+
+	A_inv = inv(A_mat)
+
+	cost(x) = mean_field_symmetry_cost(tbt, spin_orb, x, S_arr, A_inv, u_flavour, n, S2=S2, cartan=cartan)
+
+	u_num = unitary_parameter_number(n, u_flavour)
+
+	sol = optimize(cost, zeros(u_num), BFGS())
+	if cartan == true
+		tbt_rot = unitary_rotation(sol.minimizer, tbt, n, u_flavour)
+	else
+		tbt_rot = generalized_unitary_rotation(sol.minimizer, tbt, n, u_flavour)
+	end
+	tbt_sym, x_vec = symmetry_cuadratic_optimization(tbt_rot, spin_orb, S2=S2, S_arr=S_arr)
+
+	# = for cost comparisons to non-rotated tbt and full tbt
+	tbt_non_rot, x_non_rot = symmetry_cuadratic_optimization(tbt, spin_orb, S2=S2, S_arr=S_arr)
+	@show tbt_cost(tbt_sym, 0)
+	@show tbt_cost(tbt_non_rot, 0)
+	@show tbt_cost(0, tbt_to_so(tbt, spin_orb))
+	# =#
+
+	return tbt_sym, x_vec, sol.minimizer
 end
