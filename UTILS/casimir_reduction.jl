@@ -173,7 +173,7 @@ function cartan_tbt_purification(tbt, spin_orb=true)
 end
 
 function symmetry_cuadratic_optimization(tbt, spin_orb=true; S2=true, S_arr=false)
-	#finds optimal shift by minimizing fermionic cost of ||tbt - ∑si Si||², with Si symmetries
+	#finds optimal shift by minimizing fermionic two-body tensor cost of ||tbt - ∑si Si||², with Si symmetries
 	#includes Nα, Nβ, Nα², Nα*Nβ, Nβ², (and S² if S2=true) operators for symmetries
 	#S_arr input if we don't want to build the symmetries every time (for quicker cost function)
 	#returns tbt - ∑si Si and si vector
