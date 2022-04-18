@@ -58,14 +58,21 @@ function py_sparse_import(py_sparse_mat; imag_tol=1e-16)
 	return sparse_mat
 end
 
-function qubit_op_range(op_qubit; imag_tol=1e-16, ncv=minimum([50,2^n_qubit]))
+function qubit_op_range(op_qubit, n_qubit=of.count_qubits(op_qubit); imag_tol=1e-16, ncv=minimum([50,2^n_qubit]))
 	#Calculates maximum and minimum eigenvalues for qubit operator
 	op_py_sparse_mat = of.qubit_operator_sparse(op_qubit)
 	sparse_op = py_sparse_import(op_py_sparse_mat, imag_tol=imag_tol)
 
 	# =
-	E_max,_ = eigs(sparse_op, nev=1, which=:LR, maxiter = 500, tol=1e-3, ncv=ncv)
-	E_min,_ = eigs(sparse_op, nev=1, which=:SR, maxiter = 500, tol=1e-3, ncv=ncv)
+	if n_qubit >= 2
+		E_max,_ = eigs(sparse_op, nev=1, which=:LR, maxiter = 500, tol=1e-3, ncv=ncv)
+		E_min,_ = eigs(sparse_op, nev=1, which=:SR, maxiter = 500, tol=1e-3, ncv=ncv)
+	else
+		E,_ = eigen(collect(sparse_op))
+		E = real.(E)
+		E_max = maximum(E)
+		E_min = minimum(E)
+	end
 	E_range = real.([E_min[1], E_max[1]])
 	# =#
 
@@ -85,11 +92,11 @@ function qubit_op_range(op_qubit; imag_tol=1e-16, ncv=minimum([50,2^n_qubit]))
 	return E_range
 end
 
-function op_range(op; transformation=transformation, imag_tol=1e-16, ncv=minimum([50,2^n_qubit]))
+function op_range(op; transformation=transformation, imag_tol=1e-16)
 	#Calculates maximum and minimum eigenvalues for fermionic operator
 	op_qubit = qubit_transform(op, transformation)
 	
-	return qubit_op_range(op_qubit, imag_tol=imag_tol, ncv=ncv)
+	return qubit_op_range(op_qubit, imag_tol=imag_tol)
 end
 
 function L1_frags_treatment(TBTS, CARTAN_TBTS, spin_orb, α_tot = size(TBTS)[1], n=size(TBTS)[2])
@@ -146,7 +153,6 @@ function qubit_treatment(H_q)
 	
 	println("Starting AC-SI decomposition")
 	@time op_list, L1_sorted, Pauli_cost, Pauli_num = ac_sorted_inversion(H_q)
-	@show L1_sorted, length(op_list)
 	println("Pauli=$(Pauli_cost)($(ceil(log2(Pauli_num))))")
 	#println("AC-RLF L1=$(L1_AC)($(ceil(log2(length(op_list_AC)))))")
 	println("AC-SI L1=$(L1_sorted)($(ceil(log2(length(op_list)))))")
@@ -347,19 +353,21 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true)
 	α_SVD = size(SVD_TBTS)[1]
 	PUR_α_SVD = size(PUR_SVD_TBTS)[1]
 
+	println("SVD sanity:")
 	svd_tbt = SVD_TBTS[1,:,:,:,:]
 	for i in 2:α_SVD
 		svd_tbt += SVD_TBTS[i,:,:,:,:]
 	end
 	@show sum(abs.(tbt_so - svd_tbt))
 
+	println("Symmetry-purified SVD sanity:")
 	pur_svd_tbt = PUR_SVD_TBTS[1,:,:,:,:]
 	for i in 2:PUR_α_SVD
 		pur_svd_tbt += PUR_SVD_TBTS[i,:,:,:,:]
 	end
 	@show sum(abs.(tbt_ham_opt - pur_svd_tbt))
 
-	n = size(tbt)[1]
+	n = size(tbt_so)[1]
 	n_qubit = n
 	
 	S_arr = casimirs_builder(n_qubit, S2=S2)
@@ -380,8 +388,7 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true)
 	@show Etot_r
 	@show (Etot_r[2] - Etot_r[1])/2
 	full_shift = shift_builder(x_opt, S_arr, S2=S2)
-	@show of_simplify(h_ferm - H_sym_opt - tbt_to_ferm(full_shift, true))
-
+	
 	println("CSA L1 bounds (NR):")
 	@show sum(SVD_L1)/2
 	@show sum(PUR_SVD_L1)/2
@@ -398,9 +405,6 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true)
 		println("Obtaining fci wavefunction for full Hamiltonian")
 		@time ψ_fci = get_qubit_wavefunction(H_full_q, "fci", num_elecs)
 		H_opt_q = qubit_transform(H_sym_opt)
-		#ψ_hf = get_qubit_wavefunction(H_opt_q, "hf", num_elecs)
-		#println("Obtaining fci wavefunction for tapered Hamiltonian")
-		#@time ψ_fci = get_qubit_wavefunction(H_opt_q, "fci", num_elecs)
 		println("Tapering full Hamiltonian...")
 		@time H_tapered = tap.taper_H_qubit(H_full_q, ψ_hf, ψ_hf)
 		println("Showing ranges of full tapered Hamiltonian:")
@@ -439,4 +443,84 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true)
 		H_qubit_diff_SVD_PUR = qubit_transform(H_diff_SVD_PUR)
 		@show qubit_operator_trimmer(H_qubit_diff_SVD_PUR, 1e-5)
 	end
+end
+
+function QUBIT_TREATMENT(tbt, h_ferm, spin_orb; S2=true)
+	#builds fragments from x0 and K0, and compares with full operator h_ferm and its associated tbt
+	tbt_so = tbt_to_so(tbt, spin_orb)
+	println("Obtaining symmetry-shifted Hamiltonian")
+	@time tbt_ham_opt, x_opt = symmetry_cuadratic_optimization(tbt_so, true, S2=S2)
+	@time tbt_ham_opt_SD, x_opt_SD, u_params = orbital_mean_field_symmetry_reduction(tbt,
+													 spin_orb, u_flavour=MF_real(), S2=S2, cartan=false)
+
+	SVD_CARTAN_TBTS, SVD_TBTS = tbt_svd(tbt_ham_opt_SD, tol=1e-6, spin_orb=true)
+	svd_tot_tbt = SVD_TBTS[1,:,:,:,:]
+	for i in 2:size(SVD_TBTS)[1]
+		svd_tot_tbt += SVD_TBTS[i,:,:,:,:]
+	end
+	@show sum(abs.(tbt_ham_opt_SD - svd_tot_tbt))
+
+	n = size(tbt_so)[1]
+	n_qubit = n
+	
+	S_arr = casimirs_builder(n_qubit, S2=S2)
+
+	println("Showing range of symmetry-optimized hamiltonian")
+	H_sym_opt = tbt_to_ferm(tbt_ham_opt, true)
+	@time Etot_r = op_range(H_sym_opt)
+	@show Etot_r
+	@show (Etot_r[2] - Etot_r[1])/2
+	#full_shift = shift_builder(x_opt, S_arr, S2=S2)
+
+	println("Showing range of unitary + symmetry-optimized hamiltonian")
+	H_sym_opt_SD = tbt_to_ferm(tbt_ham_opt_SD, true)
+	@time Etot_r = op_range(H_sym_opt_SD)
+	@show Etot_r
+	@show (Etot_r[2] - Etot_r[1])/2
+	#full_shift = shift_builder(x_opt, S_arr, S2=S2)
+
+	println("Finished fermionic routine, starting qubit methods and final numbers...")
+	H_full_q = qubit_transform(h_ferm)
+	ψ_hf = get_qubit_wavefunction(H_full_q, "hf", num_elecs)
+	println("Obtaining fci wavefunction for full Hamiltonian")
+	@time ψ_fci = get_qubit_wavefunction(H_full_q, "fci", num_elecs)
+	H_opt_q = qubit_transform(H_sym_opt)
+	H_opt_q_SD = qubit_transform(H_sym_opt_SD)
+	println("Tapering full Hamiltonian...")
+	@time H_tapered = tap.taper_H_qubit(H_full_q, ψ_hf, ψ_hf)
+	println("Showing ranges of full tapered Hamiltonian:")
+	@time Etot_r = qubit_op_range(H_tapered)
+	@show Etot_r
+	@show (Etot_r[2] - Etot_r[1])/2
+	println("Tapering symmetry-shifted Hamiltonian...")
+	@time H_tapered_sym = tap.taper_H_qubit(H_opt_q, ψ_hf, ψ_hf)
+	println("Showing ranges of symmetry-shifted tapered Hamiltonian:")
+	@time Etot_r = qubit_op_range(H_tapered_sym)
+	@show Etot_r
+	@show (Etot_r[2] - Etot_r[1])/2
+	println("Tapering unitary + symmetry-shifted Hamiltonian...")
+	@time H_tapered_sym_SD = tap.taper_H_qubit(H_opt_q_SD, ψ_hf, ψ_hf)
+	println("Showing ranges of symmetry-shifted tapered Hamiltonian:")
+	@time Etot_r = qubit_op_range(H_tapered_sym_SD)
+	@show Etot_r
+	@show (Etot_r[2] - Etot_r[1])/2
+
+
+	println("Full Hamiltonian:")
+	qubit_treatment(H_full_q)
+
+	println("Shifted Hamiltonian:")
+	qubit_treatment(H_opt_q)
+
+	println("Tapered Hamiltonian:")
+	qubit_treatment(H_tapered)
+
+	println("Tapered symmetry-shifted Hamiltonian:")
+	qubit_treatment(H_tapered_sym)
+
+	println("Unitary + shifted Hamiltonian:")
+	qubit_treatment(H_opt_q_SD)
+	
+	println("Tapered unitary + symmetry-shifted Hamiltonian:")
+	qubit_treatment(H_tapered_sym_SD)
 end

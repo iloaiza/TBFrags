@@ -9,12 +9,12 @@ function obt_to_tbt(obt)
 
     n = size(obt)[1]
 
-    tbt = zeros(n,n,n,n)
+    tbt = zeros(typeof(Uobt[1]),n,n,n,n)
     for i in 1:n
         tbt[i,i,i,i] = Dobt[i]
     end
 
-    rotated_tbt = zeros(n,n,n,n)
+    rotated_tbt = zeros(typeof(Uobt[1]),n,n,n,n)
 
     @einsum rotated_tbt[a,b,c,d] = Uobt[a,l] * conj(Uobt[b,l]) * Uobt[c,l] * conj(Uobt[d,l]) * tbt[l,l,l,l]
     
@@ -60,7 +60,7 @@ function obt_orb_to_so(obt)
 end
 
 function cartan_obt_to_tbt(obt, tiny=1e-15)
-    #transform a Cartan one-body tensor into a two-body tensor
+    #transform a Cartan one-body tensor into a two-body tensor, should only be used for spin_orb=true
     if sum(abs.(Diagonal(obt) - obt)) > tiny
         error("Warning, trying to transform non-diagonal Cartan obt to tbt!")
     end
@@ -76,7 +76,7 @@ end
 
 function cartan_tbt_to_triang(tbt, n=size(tbt)[1])
     # transforms cartan polynomial tbt into triangular form (i.e. tbt[i,i,j,j] for i≤j)
-    tbt_tri = zeros(n,n,n,n)
+    tbt_tri = zeros(typeof(tbt[1]),n,n,n,n)
 
     for i in 1:n
         tbt_tri[i,i,i,i] = tbt[i,i,i,i]

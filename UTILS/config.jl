@@ -1,5 +1,5 @@
 ### Most common settings for tensor representation and decomposition options
-const spin_orb = false #whether spin-orbitals (true) or normalized orbitals (false) are considered. setting false changes fragment properties!
+const spin_orb = false #whether spin-orbitals (true) or spacial orbitals (false) are considered. setting false changes fragment properties!
 const include_singles = true #if true, include one-body term in two-body fragment
 const decomp_tol = 2.5e-6 #decomposition tolerance for number of fragments
 const α_max = 50 #maximum number of fragments

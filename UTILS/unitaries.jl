@@ -127,7 +127,20 @@ function unitary_cartan_rotation_from_matrix(Umat, tbt :: Array, n=size(tbt)[1])
 	return rotated_tbt
 end
 
-function unitary_rotation(u_params, tbt, n=length(tbt[:,1,1,1]), u_flavour=META.uf)
+function svd_unitaries_cartan_rotation_from_matrices(Umat, Vmat, tbt :: Array, n=size(tbt)[1])
+	#rotates Cartan tbt using SVD decomposition Lk = USV^† → Lk*(Lk^†) = USV^†*VSU^†
+	if typeof(Umat[1]) == Float64 && typeof(tbt[1]) == Float64 && typeof(Vmat[1]) == Float64
+		rotated_tbt = zeros(Float64,n,n,n,n)
+		@einsum rotated_tbt[a,b,c,d] = Umat[a,l] * Vmat[b,l] * Vmat[c,m] * Umat[d,m] * tbt[l,l,m,m]
+	else
+		rotated_tbt = zeros(Complex{Float64},n,n,n,n)
+		@einsum rotated_tbt[a,b,c,d] = Umat[a,l] * conj(Vmat[b,l]) * Vmat[c,m] * conj(Umat[d,m]) * tbt[l,l,m,m]
+	end
+
+	return rotated_tbt
+end
+
+function unitary_rotation(u_params, tbt :: Array, n=length(tbt[:,1,1,1]), u_flavour=META.uf)
 	# warning: only works for tbt consisting of Cartans (i.e. tbt[i,j,k,l] ∝ δij*δkl)
 	# return rotation of tbt with unitary given by u_params, using unitary flavour u_flavour
 
@@ -181,7 +194,11 @@ function unitary_SD_rotation(u_params, obt, tbt, n=length(tbt[:,1,1,1]), u_flavo
 	return rotated_obt, rotated_tbt
 end
 
-function generalized_unitary_rotation(u_params, tbt, n=length(tbt[:,1,1,1]), u_flavour=META.uf)
+function unitary_rotation(u_params, tbt :: Tuple, n=length(tbt[:,1,1,1]), u_flavour=META.uf)
+	return unitary_SD_rotation(u_params, tbt[1], tbt[2], n, u_flavour)
+end
+
+function generalized_unitary_rotation(u_params, tbt :: Array, n=length(tbt[:,1,1,1]), u_flavour=META.uf)
 	# as unitary rotation, works for non-Cartan two-body-tensors too
 	# return rotation of tbt with unitary given by u_params, using unitary flavour u_flavour
 	
@@ -204,6 +221,36 @@ function generalized_unitary_rotation(u_params, tbt, n=length(tbt[:,1,1,1]), u_f
 	end
 
 	return rotated_tbt
+end
+
+function generalized_unitary_rotation(u_params, tbt_tup :: Tuple, n=size(tbt[1])[1], u_flavour=META.uf)
+	# as unitary rotation, works for non-Cartan two-body-tensors too
+	# return rotation of tbt with unitary given by u_params, using unitary flavour u_flavour
+	
+	# generate unitary matrix Umat from flavour and parameters
+	if typeof(u_flavour) == MF_real
+		Umat = MF_real_unitary(n, u_params)
+	elseif typeof(u_flavour) == MF
+		Umat = MF_unitary(n, u_params)
+	else
+		error("Trying to perform unitary rotation with flavour $(u_flavour), not implemented!")
+	end
+
+	obt, tbt = tbt_tup
+
+	if typeof(u_flavour) == MF_real
+		rotated_tbt = zeros(typeof(tbt[1,1,1,1]),n,n,n,n)
+		@einsum rotated_tbt[a,b,c,d] = Umat[a,l1] * Umat[b,l2] * Umat[c,m1] * Umat[d,m2] * tbt[l1,l2,m1,m2]
+		rotated_obt = zeros(typeof(obt[1,1]),n,n)
+		@einsum rotated_obt[a,b] = Umat[a,l1] * Umat[b,l2] * obt[l1,l2]
+	elseif typeof(u_flavour) == MF
+		rotated_tbt = zeros(Complex{Float64},n,n,n,n)
+		@einsum rotated_tbt[a,b,c,d] = Umat[a,l1] * conj(Umat[b,l2]) * Umat[c,m1] * conj(Umat[d,m2]) * tbt[l1,l2,m1,m2]
+		rotated_obt = zeros(Complex{Float64},n,n)
+		@einsum rotated_obt[a,b] = Umat[a,l1] * conj(Umat[b,l2]) * obt[l1,l2]
+	end
+
+	return rotated_obt, rotated_tbt
 end
 
 function unitary_parameter_number(n, flavour = META.uf)
