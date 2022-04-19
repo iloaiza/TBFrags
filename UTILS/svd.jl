@@ -27,7 +27,7 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=true, tiny=1e-8)
 
     for i in 1:N
     	if abs(Λ[i]) < tol
-    		println("Truncating SVD for coefficients with magnitude smaller or equal to $(abs(Λ[i]))")
+    		println("Truncating SVD for coefficients with magnitude smaller or equal to $(abs(Λ[i])), using $(i-1) fragments")
     		break
     	end
         cur_l = Symmetric(reshape(U[:, i], (n,n)))
@@ -40,7 +40,6 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=true, tiny=1e-8)
     end
 
     num_ops = length(L_mats)
-    @show num_ops
     L_ops = []
     for i in 1:length(L_mats)
     	op_1d = obt_to_ferm(L_mats[i], spin_orb)
