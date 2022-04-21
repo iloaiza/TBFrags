@@ -204,10 +204,7 @@ function symmetry_cuadratic_optimization(tbt, spin_orb=true; S2=true, S_arr=fals
 
 	x_vec = A_inv * v_vec
 
-	tbt_sym = copy(tbt_so)
-	for i in 1:s_len
-		tbt_sym -= x_vec[i] * S_arr[i]
-	end
+	tbt_sym = tbt_so - shift_builder(x_vec, S_arr, S2=S2)
 
 	return tbt_sym, x_vec
 end
@@ -282,7 +279,7 @@ function orbital_mean_field_symmetry_reduction(tbt :: Tuple, spin_orb; u_flavour
 	end
 	tbt_sym, x_vec = symmetry_cuadratic_optimization(tbt_rot, spin_orb, S2=S2, S_arr=S_arr)
 
-	# = for cost comparisons to non-rotated tbt and full tbt
+	#= for cost comparisons to non-rotated tbt and full tbt
 	tbt_non_rot, x_non_rot = symmetry_cuadratic_optimization(tbt, spin_orb, S2=S2, S_arr=S_arr)
 	@show tbt_cost(tbt_sym, 0)
 	@show tbt_cost(tbt_non_rot, 0)

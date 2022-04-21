@@ -13,6 +13,7 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=true, tiny=1e-8)
 
 	println("Diagonalizing two-body tensor")
 	@time Λ,U = eigen(tbt_res)
+	@show (maximum(Λ) - minimum(Λ))/2
 	ind=sortperm(abs.(Λ))[end:-1:1]
     Λ = Λ[ind]
     U=U[:,ind]
@@ -102,7 +103,8 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=true, tiny=1e-8)
 	end
 
 	println("Finished SVD routine")
-	println("SVD sanity:")
+	
+	# = sanity routine, makes sure fragments recover initial tensor
 	tbt_tot = TBTS[1,:,:,:,:]
 	for i in 2:num_ops
 		tbt_tot += TBTS[i,:,:,:,:]
@@ -111,7 +113,10 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=true, tiny=1e-8)
 
 	if sanity_sum > tiny
 		println("Error, SVD routine did not decompose operator to correct accuracy, difference is $sanity_sum")
+	else
+		println("SVD sanity checked")
 	end
+	# =#
 
 	return CARTAN_TBTS, TBTS, sum(L_ops)
 end
