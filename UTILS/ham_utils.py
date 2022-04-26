@@ -1,5 +1,6 @@
 import math
 import pickle
+import h5py
 from openfermion import FermionOperator, QubitOperator, MolecularData, hermitian_conjugated, get_molecular_data
 from openfermionpyscf import run_pyscf
 from openfermion.transforms import get_fermion_operator
