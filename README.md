@@ -63,7 +63,7 @@ Fast installation: execute install.sh in a terminal. Set PY_INSTALL=true in file
 Requires installing julia packages (can be done by accessing the julia package manager in a julia session with ']', then writing: 'add Optim, PyCall, Einsum, HDF5, SharedArrays, Plots, PyPlot, Suppressor, SparseArrays, Arpack, ExpmV'). Can also be installed by running the "install.sh" script on a terminal, set PY_INSTALL to true(false) to do(not) install python environment along with julia packages. Make sure to build PyCall with correct python environment (check install.sh script, or PyCall github page for more info).
 
 Requires/creates a python executable with installed packages:
-'pip install pyscf openfermion openfermionpyscf tequila-basic'
+'pip install pyscf openfermion openfermionpyscf tequila-basic h5py'
 
 The python virtual environment should then be activated before running TBFrags routines with
 'source VIRTUAL_ENVIRONMENT_DIRECTORY/bin/activate'
