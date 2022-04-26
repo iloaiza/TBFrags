@@ -89,6 +89,19 @@ function full_ham_tbt(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometr
 	end
 end
 
+function load_full_ham_tbt(ham_name; spin_orb=false, prefix='.')
+
+    tbt_mo, obt_mo = ham.load_ints(ham_name, prefix=prefix)
+
+    int_mo = (obt_mo, tbt_mo)
+
+    tbt_so = tbt_to_so(int_mo, spin_orb)
+
+    h_ferm = tbt_to_ferm(tbt_so, spin_orb)
+
+    return tbt_so, h_ferm
+end
+
 function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1, n_elec=false)
 	if n_elec == false	
 		h_ferm = obtain_hamiltonian(mol_name, basis=basis, ferm=ferm, geometry=geometry)
@@ -417,3 +430,5 @@ function julia_ac_sorted_inversion(H::PyObject)
     return L1_norm, num_groups
 end
 # =#
+=======
+>>>>>>> origin/master

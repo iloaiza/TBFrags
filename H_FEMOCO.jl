@@ -5,25 +5,17 @@
 using Distributed
 @everywhere include("UTILS/config.jl")
 
-#ARGS = [1=mol_name, 2=spin_orb]
+#ARGS = [1=ham_name]
 args_len = length(ARGS)
-const mol_name = ARGS[1]
-if length(ARGS) >= 2
-	@everywhere @suppress_err global spin_orb = parse(Bool, remotecall_fetch(i->ARGS[i],1,2))
-end
+const ham_name = ARGS[1]
 
 @everywhere include("include.jl")
 
 println("Loading calculations with:")
-@show mol_name
-@show basis
-@show geometry 
-@show spin_orb
+@show ham_name
 
-tbt, h_ferm, num_elecs = obtain_SD(mol_name, basis=basis, ferm=true, spin_orb=spin_orb, geometry=geometry, n_elec=true)
-#if you only have tbt, you can get h_ferm by doing h_ferm = tbt_to_ferm(tbt, spin_orb)
+tbt_so, h_ferm = load_full_ham_tbt(ham_name, spin_orb=false, prefix=".")
 
-tbt_so = tbt_to_so(tbt, spin_orb)
 SVD_CARTAN_TBTS, SVD_TBTS = tbt_svd(tbt_so, tol=1e-6, spin_orb=true)
 
 α_SVD = size(SVD_TBTS)[1]
