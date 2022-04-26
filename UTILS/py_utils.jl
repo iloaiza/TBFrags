@@ -343,3 +343,77 @@ function of_wavefunction_to_vector(psi, tol=1e-8)
     end
     return psi[:,1]
 end
+
+# =
+function binary_is_anticommuting(bin1, bin2, n_qubits)
+	#check if two binary vectors (i.e. Pauli words) are anticommuting
+
+    return sum(bin1[1:n_qubits] .* bin2[n_qubits+1:end] + bin1[n_qubits+1:end] .* bin2[1:n_qubits]) % 2
+end
+
+function julia_ac_sorted_inversion(H::PyObject)
+	pws_orig, vals_orig = antic.get_nontrivial_paulis(H)
+
+    pnum = length(pws_orig)
+    Pauli_cost = sum(abs.(vals_orig))
+    println("Pauli=$(Pauli_cost)($(ceil(log2(pnum))))")
+
+    n_qubits = of.count_qubits(H)
+    bin_vecs = zeros(2*n_qubits, pnum)
+    ind_ord = sortperm(abs.(vals_orig))[end:-1:1]
+    vals_ord = vals_orig[ind_ord]
+
+    for i in 1:pnum
+    	bin_vecs[:,i] = qbit.pauli_word_to_binary_vector(pws_orig[ind_ord[i]], n_qubits)
+    end
+
+    is_grouped = zeros(Bool,pnum)
+    group_arrs = Array{Int64,1}[]
+    vals_arrs = Array{Complex{Float64},1}[]
+
+    for i in 1:pnum
+    	if is_grouped[i] == false
+    		curr_group = [i]
+    		curr_vals = [vals_ord[i]]
+    		is_grouped[i] = true
+    		for j in i+1:pnum
+    			if is_grouped[j] == false
+	    			if binary_is_anticommuting(bin_vecs[:,i],bin_vecs[:,j], n_qubits) == 1
+	    				antic_w_group = true
+	    				for k in curr_group[2:end]
+	    					if binary_is_anticommuting(bin_vecs[:,k],bin_vecs[:,j], n_qubits) == 0
+		    					antic_w_group = false
+		    					break
+		    				end
+	    				end
+
+	    				if antic_w_group == true
+		    				push!(curr_group,j)
+		    				push!(curr_vals,vals_ord[j])
+		    				is_grouped[j] = true
+		    			end
+	    			end
+	    		end
+	    	end
+    		push!(group_arrs,curr_group)
+    		push!(vals_arrs, curr_vals)
+    	end
+    end
+
+    if prod(is_grouped) == 0
+    	println("Error, not all terms are grouped after AC-SI algorithm!")
+    	@show is_grouped
+    end
+
+    num_groups = length(group_arrs)
+    group_L1 = zeros(num_groups)
+    for i in 1:num_groups
+        for val in vals_arrs[i]
+            group_L1[i] += abs2(val)
+        end
+    end
+
+    L1_norm = sum(sqrt.(group_L1))
+    return L1_norm, num_groups
+end
+# =#
