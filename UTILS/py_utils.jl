@@ -90,14 +90,16 @@ function full_ham_tbt(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometr
 end
 
 function load_full_ham_tbt(ham_name; spin_orb=false, prefix='.')
-
-    tbt_mo, obt_mo = ham.load_ints(ham_name, prefix=prefix)
-
+	println("Loading hamiltonian data $ham_name")
+    @time tbt_mo, obt_mo = ham.load_ints(ham_name, prefix=prefix)
+    @show size(obt_mo)
     int_mo = (obt_mo, tbt_mo)
 
-    tbt_so = tbt_to_so(int_mo, spin_orb)
+    println("Converting to spin-orbitals:")
+    @time tbt_so = tbt_to_so(int_mo, spin_orb)
 
-    h_ferm = tbt_to_ferm(tbt_so, spin_orb)
+    println("Building fermion operator:")
+    @time h_ferm = tbt_to_ferm(tbt_so, spin_orb)
 
     return tbt_so, h_ferm
 end
@@ -357,7 +359,6 @@ function of_wavefunction_to_vector(psi, tol=1e-8)
     return psi[:,1]
 end
 
-# =
 function binary_is_anticommuting(bin1, bin2, n_qubits)
 	#check if two binary vectors (i.e. Pauli words) are anticommuting
 
@@ -429,6 +430,3 @@ function julia_ac_sorted_inversion(H::PyObject)
     L1_norm = sum(sqrt.(group_L1))
     return L1_norm, num_groups
 end
-# =#
-=======
->>>>>>> origin/master
