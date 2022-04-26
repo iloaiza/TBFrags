@@ -77,6 +77,20 @@ def load_system(mol, ferm, prefix=''):
             H = pickle.load(f)
     return H
 
+
+def load_ints (ham_name, prefix='.'): 
+    '''
+    Loading the computed integrals 
+    '''
+    filename = prefix +'/femoco/ham_' + ham_name +'.h5'
+
+    with h5py.File(filename, 'r') as f:
+        tbt = f.get('eri')[()]
+        obt = f.get('h0' )[()]
+    
+    return tbt, obt 
+
+
 def chooseType(typeHam, geometries):
     '''
     Genreate the molecular data of specified type of Hamiltonian
