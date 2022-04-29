@@ -93,15 +93,15 @@ function load_full_ham_tbt(ham_name; spin_orb=false, prefix='.')
 	println("Loading hamiltonian data $ham_name")
     @time tbt_mo, obt_mo = ham.load_ints(ham_name, prefix=prefix)
     @show size(obt_mo)
-    int_mo = (obt_mo, tbt_mo)
+    tbt_mo_tup = (obt_mo, tbt_mo)
 
     println("Converting to spin-orbitals:")
-    @time tbt_so = tbt_to_so(int_mo, spin_orb)
+    @time tbt_so = tbt_to_so(tbt_mo_tup, spin_orb)
 
     println("Building fermion operator:")
-    @time h_ferm = tbt_to_ferm(tbt_so, spin_orb)
+    @time h_ferm = tbt_to_ferm(tbt_mo_tup, spin_orb)
 
-    return tbt_so, h_ferm
+    return tbt_mo_tup, tbt_so, h_ferm
 end
 
 function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1, n_elec=false)
@@ -326,8 +326,8 @@ function anti_commuting_decomposition(H::PyObject)
 	return antic.get_antic_group(H)
 end
 
-function ac_sorted_inversion(H::PyObject, tol=1e20)
-	return antic.sorted_inversion_antic(H, tol=tol)
+function ac_sorted_insertion(H::PyObject, tol=1e20)
+	return antic.sorted_insertion_antic(H, tol=tol)
 end
 
 function qubit_operator_trimmer(Qop, tol=1e-3)
@@ -365,7 +365,8 @@ function binary_is_anticommuting(bin1, bin2, n_qubits)
     return sum(bin1[1:n_qubits] .* bin2[n_qubits+1:end] + bin1[n_qubits+1:end] .* bin2[1:n_qubits]) % 2
 end
 
-function julia_ac_sorted_inversion(H::PyObject)
+function julia_ac_sorted_insertion(H::PyObject)
+	#perform sorted in
 	pws_orig, vals_orig = antic.get_nontrivial_paulis(H)
 
     pnum = length(pws_orig)

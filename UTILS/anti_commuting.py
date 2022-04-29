@@ -46,7 +46,7 @@ def get_antic_group(H:QubitOperator):
     pauli_norm = np.sum(np.abs(vals))
     return comm_list, L1_norm, pauli_norm, len(pws)
 
-def sorted_inversion_antic(H:QubitOperator, tol=1e-1):
+def sorted_insertion_antic(H:QubitOperator, tol=1e-1):
     '''
     Return list of commuting fragments of H, found with sorted insertion algorithm
     Paulis with coefficients further away than tol are not grouped together
@@ -89,7 +89,7 @@ def sorted_inversion_antic(H:QubitOperator, tol=1e-1):
 
             vals_arrs.append(curr_vals)
             op_list.append(curr_op)
-            groups_list.append(curr_group)
+            groups_list.append()
 
     num_groups = len(op_list)
     group_L1 = np.zeros(num_groups)
@@ -99,4 +99,4 @@ def sorted_inversion_antic(H:QubitOperator, tol=1e-1):
 
     L1_norm = np.sum(group_L1**0.5)
     pauli_norm = np.sum(np.abs(vals))
-    return op_list, L1_norm, pauli_norm, pnum, groups_list
+    return op_list, L1_norm, pauli_norm, pnum
