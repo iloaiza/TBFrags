@@ -162,7 +162,12 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	#builds fragments from x0 and K0, and compares with full operator h_ferm and its associated tbt
 	tbt_so = tbt_to_so(tbt, spin_orb)
 	println("Obtaining symmetry-shifted Hamiltonian")
-	@time tbt_ham_opt, x_opt = symmetry_cuadratic_optimization(tbt_so, true, S2=S2)
+        if linopt == true
+                #NOTE: S2=true is not finished. 
+		@time tbt_ham_opt, x_opt = symmetry_linprog_optimization(tbt, spin_orb=true, S2=false)
+	else
+		@time tbt_ham_opt, x_opt = symmetry_cuadratic_optimization(tbt_so, true, S2=S2)
+	end
 	SVD_CARTAN_TBTS, SVD_TBTS = tbt_svd(tbt_ham_opt, tol=1e-6, spin_orb=true)
 	α_SVD = size(SVD_TBTS)[1]
 
@@ -196,12 +201,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 		push!(FRAGS, frag)
 		TBTS[i,:,:,:,:] = tbt_to_so(fragment_to_tbt(frag), spin_orb)
 		CARTAN_TBTS[i,:,:,:,:] = tbt_to_so(fragment_to_normalized_cartan_tbt(frag), spin_orb)
-		if ( linopt == true )
-			S2 = false
-			pur_tbt, pur_coeffs = cartan_tbt_l1optimization(CARTAN_TBTS[i,:,:,:,:], true)
-		else
-			pur_tbt, pur_coeffs = cartan_tbt_purification(CARTAN_TBTS[i,:,:,:,:], true)
-		end
+		pur_tbt, pur_coeffs = cartan_tbt_purification(CARTAN_TBTS[i,:,:,:,:], true)
 		PUR_CARTANS[i,:,:,:,:] = pur_tbt
 		PUR_COEFFS[i,:] = pur_coeffs
 	end
@@ -215,25 +215,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 		println("Purifying Cartan fragment $i")
 		orig_range =  CSA_tbt_range(SVD_CARTAN_TBTS[i,:,:,:,:])
 		orig_l1 = cartan_tbt_l1_cost(SVD_CARTAN_TBTS[i,:,:,:,:], true)
-		println(" ")
-		println("Im CLOSE")
-		println(" ")
-
-		if ( linopt == true )
-			
-			println(" ")
-			println("*** Linear Programming is in work")
-			println(" ")
-			S2 = false
-			@time pur_tbt_svd, pur_coeffs_svd = cartan_tbt_l1optimization(SVD_CARTAN_TBTS[i,:,:,:,:], true)
-		else
-
-			println(" ")
-			println("***NO Linear Programming is in work***")
-			println(" ")
-			@time pur_tbt_svd, pur_coeffs_svd = cartan_tbt_purification(SVD_CARTAN_TBTS[i,:,:,:,:], true)
-		end
-
+		@time pur_tbt_svd, pur_coeffs_svd = cartan_tbt_purification(SVD_CARTAN_TBTS[i,:,:,:,:], true)
 		pur_range = CSA_tbt_range(pur_tbt_svd)
 		pur_l1 = cartan_tbt_l1_cost(pur_tbt_svd, true)
 		println("Range of fragment $i modified from $orig_range to $pur_range")
@@ -365,11 +347,16 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 end
 
 
-function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true)
+function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true, linopt=true)
 	#builds fragments from x0 and K0, and compares with full operator h_ferm and its associated tbt
 	tbt_so = tbt_to_so(tbt, spin_orb)
 	println("Obtaining symmetry-shifted Hamiltonian")
-	@time tbt_ham_opt, x_opt = symmetry_cuadratic_optimization(tbt_so, true, S2=S2)
+        if linopt == true
+                #NOTE: S2=true is not finished. 
+		@time tbt_ham_opt, x_opt = symmetry_linprog_optimization(tbt, spin_orb=true, S2=false)
+	else
+		@time tbt_ham_opt, x_opt = symmetry_cuadratic_optimization(tbt_so, true, S2=S2)
+	end
 	SVD_CARTAN_TBTS, SVD_TBTS = tbt_svd(tbt_so, tol=1e-6, spin_orb=true)
 	PUR_SVD_CARTAN_TBTS, PUR_SVD_TBTS = tbt_svd(tbt_ham_opt, tol=1e-6, spin_orb=true)
 
@@ -468,11 +455,16 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true)
 	end
 end
 
-function QUBIT_TREATMENT(tbt, h_ferm, spin_orb; S2=true)
+function QUBIT_TREATMENT(tbt, h_ferm, spin_orb; S2=true, linopt=true)
 	#builds fragments from x0 and K0, and compares with full operator h_ferm and its associated tbt
 	tbt_so = tbt_to_so(tbt, spin_orb)
 	println("Obtaining symmetry-shifted Hamiltonian")
-	@time tbt_ham_opt, x_opt = symmetry_cuadratic_optimization(tbt_so, true, S2=S2)
+        if linopt == true
+                #NOTE: S2=true is not finished. 
+		@time tbt_ham_opt, x_opt = symmetry_linprog_optimization(tbt, spin_orb=true, S2=false)
+	else
+		@time tbt_ham_opt, x_opt = symmetry_cuadratic_optimization(tbt_so, true, S2=S2)
+	end
 	@time tbt_ham_opt_SD, x_opt_SD, u_params = orbital_mean_field_symmetry_reduction(tbt,
 													 spin_orb, u_flavour=MF_real(), S2=S2, cartan=false)
 

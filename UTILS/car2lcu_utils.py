@@ -512,6 +512,9 @@ def Smat_builder (nqubit):
     #Nβ²: 
     Smat[norb:2*norb,3] = 1
     Smat[2*norb+ncpl:2*norb+2*ncpl,3] = 1.0
+
+    #NOTE: how should be the order?  
+
     #NαNβ: 
     Smat[2*norb+2*ncpl:,4] = 0.5
     return  Smat

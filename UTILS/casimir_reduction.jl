@@ -76,7 +76,7 @@ function casimirs_builder(n_qubit; debug=false, S2=false, one_body=false)
 	end
 	
 	OB_arr = [Nα_obt, Nβ_obt]
-	TB_arr = [Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt]
+	TB_arr = [Nα_tbt, Nβ_tbt, Nα2_tbt, Nβ2_tbt, NαNβ_tbt] #AMC: the order of tensors changed
 
 	if S2 == true
 		S2_tbt = zeros(n_qubit,n_qubit,n_qubit,n_qubit)
@@ -172,7 +172,7 @@ function cartan_tbt_purification(tbt, spin_orb=true)
 	return tbt_so - shift, sol.minimizer
 end
 
-function cartan_tbt_l1optimization(tbt, spin_orb=true)
+function symmetry_linprog_optimization(tbt, spin_orb=true)
 	# input: cartan tbt operator (and whether it is in spin-orbitals or orbitals)
 	# output: cartan tbt operator in spin-orbitals with shifted symmetries, and shift constants
 	tbt_so = tbt_to_so(tbt, spin_orb)
@@ -181,11 +181,11 @@ function cartan_tbt_l1optimization(tbt, spin_orb=true)
 
 	S_arr  = casimirs_builder(n_qubit, S2=false)
 
-        casprm = car2lcu.CasOpt_LinProg(tbt_so, nqubit)
+        x_vec = car2lcu.CasOpt_LinProg(tbt_so, nqubit)
 
-	shift = shift_builder(casprm, S_arr, S2=false)
+	tbt_sym = tbt_so - shift_builder(casprm, S_arr, S2=false)
 
-	return tbt_so - shift, sol.minimizer
+	return tbt_sym, x_vec
 end
 
 function symmetry_cuadratic_optimization(tbt, spin_orb=true; S2=true, S_arr=false)
