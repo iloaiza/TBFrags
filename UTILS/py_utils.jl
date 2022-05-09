@@ -89,21 +89,6 @@ function full_ham_tbt(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometr
 	end
 end
 
-function load_full_ham_tbt(ham_name; spin_orb=false, prefix='.')
-	println("Loading hamiltonian data $ham_name")
-    @time tbt_mo, obt_mo = ham.load_ints(ham_name, prefix=prefix)
-    @show size(obt_mo)
-    tbt_mo_tup = (obt_mo, tbt_mo)
-
-    println("Converting to spin-orbitals:")
-    @time tbt_so = tbt_to_so(tbt_mo_tup, spin_orb)
-
-    println("Building fermion operator:")
-    @time h_ferm = tbt_to_ferm(tbt_mo_tup, spin_orb)
-
-    return tbt_mo_tup, tbt_so, h_ferm
-end
-
 function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1, n_elec=false)
 	if n_elec == false	
 		h_ferm = obtain_hamiltonian(mol_name, basis=basis, ferm=ferm, geometry=geometry)
@@ -353,7 +338,7 @@ end
 function of_wavefunction_to_vector(psi, tol=1e-8)
 	psi_sparse = py_sparse_import(psi)
 	@time E,psi = eigs(psi_sparse, nev=1, which=:LM)
-    if abs(1-E[1]) >tol
+    if abs(1-E[1]) > tol
         println("Warning, diagonalizing pure density matrix resulted in eig=$(E[1])! Using corresponding wavefunction as pure")
     end
     return psi[:,1]
@@ -370,14 +355,19 @@ function julia_ac_sorted_insertion(H::PyObject)
 	pws_orig, vals_orig = antic.get_nontrivial_paulis(H)
 
     pnum = length(pws_orig)
+
     Pauli_cost = sum(abs.(vals_orig))
-    println("Pauli=$(Pauli_cost)($(ceil(log2(pnum))))")
+    println("Pauli=$(Pauli_cost)($(ceil(log2(pnum)))), number of Paulis is $pnum")
 
     n_qubits = of.count_qubits(H)
-    bin_vecs = zeros(2*n_qubits, pnum)
+    println("Allocating bin vectors")
+    bin_vecs = zeros(Bool,2*n_qubits, pnum)
+
+    println("Sorting by coefficients")
     ind_ord = sortperm(abs.(vals_orig))[end:-1:1]
     vals_ord = vals_orig[ind_ord]
 
+    println("Filling binary vectors array")
     for i in 1:pnum
     	bin_vecs[:,i] = qbit.pauli_word_to_binary_vector(pws_orig[ind_ord[i]], n_qubits)
     end
@@ -386,6 +376,7 @@ function julia_ac_sorted_insertion(H::PyObject)
     group_arrs = Array{Int64,1}[]
     vals_arrs = Array{Complex{Float64},1}[]
 
+    println("Running sorted insertion algorithm")
     for i in 1:pnum
     	if is_grouped[i] == false
     		curr_group = [i]
