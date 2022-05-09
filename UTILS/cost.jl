@@ -6,8 +6,13 @@ import Base.-
 -(A::Tuple, B::Tuple) = (A[1]-B[1], A[2]-B[2])
 
 function cartan_obt_l1_cost(obt :: Array, spin_orb=true)
-	n=size(obt)[1]
-	l1_cost = sum(abs.(Diagonal(obt)))
+	if length(size(obt)) == 1
+		#obt is just array of diagonal elements
+		l1_cost = sum(abs.(obt))
+	else	
+		n=size(obt)[1]
+		l1_cost = sum(abs.(Diagonal(obt)))
+	end
 
 	if spin_orb
 		return l1_cost
