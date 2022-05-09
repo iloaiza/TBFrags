@@ -54,9 +54,9 @@ function CSA_tbt_range(tbt_CSA_so, triang=false, tiny=1e-12)
 	end
 	
 	num_lambdas = Int(n*(n+1)/2)
-	#λs[:,1] = [λij]
-	#λs[:,2] = [ni num]
-	#λs[:,3] = [nj num]
+	#λs[ij,1] = [λij]
+	#λs[ij,2] = [ni num]
+	#λs[ij,3] = [nj num]
 	λs = zeros(typeof(tbt_CSA_so[1]),num_lambdas,3)
 	global idx = 0
 	for i in 1:n
@@ -70,13 +70,13 @@ function CSA_tbt_range(tbt_CSA_so, triang=false, tiny=1e-12)
 	return CSA_λs_evals(λs, n)
 end
 
-function py_sparse_import(py_sparse_mat; imag_tol=1e-16)
+function py_sparse_import(py_sparse_mat; imag_tol=1e-14)
 	#transform python sparse matrix into julia sparse matrix
 	row, col, vals = scipy.sparse.find(py_sparse_mat)
 	py_shape = py_sparse_mat.get_shape()
 	n = py_shape[1]
 	
-	if sum(imag.(vals)) < imag_tol
+	if sum(abs.(imag.(vals))) < imag_tol
 		vals = real.(vals)
 	end
 
@@ -128,11 +128,10 @@ function op_range(op; transformation=transformation, imag_tol=1e-16)
 	return qubit_op_range(op_qubit, imag_tol=imag_tol)
 end
 
-function L1_frags_treatment(TBTS, CARTAN_TBTS, spin_orb, α_tot = size(TBTS)[1], n=size(TBTS)[2])
+function L1_frags_treatment(CARTAN_TBTS, spin_orb, α_tot = size(CARTAN_TBTS)[1], n=size(CARTAN_TBTS)[2])
 	#Caclulate different L1 norms for group of fragments
 	CSA_L1 = SharedArray(zeros(α_tot)) #holds (sum _ij |λij|) L1 norm for CSA polynomial
 	E_RANGES = SharedArray(zeros(α_tot,2)) #holds eigenspectrum boundaries for each operator
-	L2 = SharedArray(zeros(α_tot)) #holds L2 fermionic norm of each tbt
 	
 	@sync @distributed for i in 1:α_tot
 		#println("L1 treatment of fragment $i")
@@ -140,7 +139,6 @@ function L1_frags_treatment(TBTS, CARTAN_TBTS, spin_orb, α_tot = size(TBTS)[1],
 		#build qubit operator for final sanity check
 		
 		CSA_L1[i] = cartan_tbt_l1_cost(CARTAN_TBTS[i,:,:,:,:], spin_orb)
-		L2[i] = tbt_cost(TBTS[i,:,:,:,:], 0)
 		
 		# SQRT_L1 subroutine
 		op_CSA = tbt_to_ferm(CARTAN_TBTS[i,:,:,:,:], spin_orb)
@@ -176,7 +174,7 @@ function L1_frags_treatment(TBTS, CARTAN_TBTS, spin_orb, α_tot = size(TBTS)[1],
 	end
 	# =#
 
-	return CSA_L1, E_RANGES, L2
+	return CSA_L1, E_RANGES
 end
 
 function qubit_treatment(H_q)
@@ -268,10 +266,10 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	S_arr = casimirs_builder(n_qubit, S2=true)
 
 	println("Starting L1 treatment for SVD fragments")
-	SVD_L1, SVD_E_RANGES,_ = L1_frags_treatment(SVD_TBTS, SVD_CARTAN_TBTS, true)
-	#SVD_PUR_L1, SVD_PUR_RANGES, _ = L1_frags_treatment(SVD_TBTS, PUR_SVD_CARTANS, true)
+	SVD_L1, SVD_E_RANGES = L1_frags_treatment(SVD_CARTAN_TBTS, true)
+	#SVD_PUR_L1, SVD_PUR_RANGES = L1_frags_treatment(PUR_SVD_CARTANS, true)
 	#= CSA subsection
-	CSA_L1, PUR_L1, E_RANGES, PUR_RANGES, CSA_OP = L1_frags_treatment(TBTS, CARTAN_TBTS, PUR_CARTANS, spin_orb)
+	PUR_L1, PUR_RANGES= L1_frags_treatment(PUR_CARTANS, spin_orb)
 	global H_SYM_FERM = of.FermionOperator.zero()
 	for i in 1:α_tot
 		x = PUR_COEFFS[i]
@@ -398,9 +396,9 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true)
 	S_arr = casimirs_builder(n_qubit, S2=S2)
 
 	println("Starting L1 treatment for SVD fragments")
-	@time SVD_L1, SVD_E_RANGES, SVD_L2 = L1_frags_treatment(SVD_TBTS, SVD_CARTAN_TBTS, true)
+	@time SVD_L1, SVD_E_RANGES = L1_frags_treatment(SVD_CARTAN_TBTS, true)
 	println("Starting L1 treatment for SVD fragments of purified Hamiltonian")
-	@time PUR_SVD_L1, PUR_SVD_E_RANGES, PUR_SVD_L2 = L1_frags_treatment(PUR_SVD_TBTS, PUR_SVD_CARTAN_TBTS, true)
+	@time PUR_SVD_L1, PUR_SVD_E_RANGES = L1_frags_treatment(PUR_SVD_CARTAN_TBTS, true)
 
 	println("Starting purification and L1 treatment for SVD fragments:")
 	SVD_THEN_PUR_CARTAN_TBTS = zeros(α_SVD, n_qubit, n_qubit, n_qubit, n_qubit)
@@ -416,7 +414,7 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true)
 	if S2 == true
 		println("Warning, Cartan norm will give wrong results for SVD-then-shifted since S² is not a Cartan form")
 	end
-	SVD_THEN_PUR_L1, SVD_THEN_PUR_E_RANGES, SVD_THEN_PUR_L2 = L1_frags_treatment(SVD_THEN_PUR_TBTS, SVD_THEN_PUR_CARTAN_TBTS, true)
+	SVD_THEN_PUR_L1, SVD_THEN_PUR_E_RANGES = L1_frags_treatment(SVD_THEN_PUR_CARTAN_TBTS, true)
 
 	println("Starting purification and L1 treatment for SVD fragments of symmetry-optimized H:")
 	PUR2_CARTAN_TBTS = zeros(PUR_α_SVD, n_qubit, n_qubit, n_qubit, n_qubit)
@@ -432,7 +430,7 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true)
 	if S2 == true
 		println("Warning, Cartan norm will give wrong results for SVD-then-shifted since S² is not a Cartan form")
 	end
-	PUR2_L1, PUR2_E_RANGES, PUR2_L2 = L1_frags_treatment(PUR2_TBTS, PUR2_CARTAN_TBTS, true)
+	PUR2_L1, PUR2_E_RANGES = L1_frags_treatment(PUR2_CARTAN_TBTS, true)
 
 	
 	println("Calculating range of full hamiltonian:")
