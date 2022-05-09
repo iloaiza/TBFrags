@@ -18,7 +18,7 @@ then
 	#--system-site-packages option makes sure configuration from system is taken for packages (e.g. OpenBLAS)
 	virtualenv --system-site-packages py_env
 	source ./py_env/bin/activate
-	pip install openfermion sympy pyscf openfermionpyscf tequila-basic
+	pip install openfermion sympy pyscf openfermionpyscf tequila-basic h5py
 fi
 
 touch install.jl

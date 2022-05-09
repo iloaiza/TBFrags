@@ -89,19 +89,6 @@ function full_ham_tbt(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometr
 	end
 end
 
-function load_full_ham_tbt(ham_name; spin_orb=false, prefix='.')
-
-    tbt_mo, obt_mo = ham.load_ints(ham_name, prefix=prefix)
-
-    int_mo = (obt_mo, tbt_mo)
-
-    tbt_so = tbt_to_so(int_mo, spin_orb)
-
-    h_ferm = tbt_to_ferm(tbt_so, spin_orb)
-
-    return tbt_so, h_ferm
-end
-
 function obtain_SD(mol_name; basis="sto3g", ferm=true, spin_orb=true, geometry=1, n_elec=false)
 	if n_elec == false	
 		h_ferm = obtain_hamiltonian(mol_name, basis=basis, ferm=ferm, geometry=geometry)
@@ -324,8 +311,8 @@ function anti_commuting_decomposition(H::PyObject)
 	return antic.get_antic_group(H)
 end
 
-function ac_sorted_inversion(H::PyObject, tol=1e20)
-	return antic.sorted_inversion_antic(H, tol=tol)
+function ac_sorted_insertion(H::PyObject, tol=1e20)
+	return antic.sorted_insertion_antic(H, tol=tol)
 end
 
 function qubit_operator_trimmer(Qop, tol=1e-3)
@@ -351,8 +338,87 @@ end
 function of_wavefunction_to_vector(psi, tol=1e-8)
 	psi_sparse = py_sparse_import(psi)
 	@time E,psi = eigs(psi_sparse, nev=1, which=:LM)
-    if abs(1-E[1]) >tol
+    if abs(1-E[1]) > tol
         println("Warning, diagonalizing pure density matrix resulted in eig=$(E[1])! Using corresponding wavefunction as pure")
     end
     return psi[:,1]
+end
+
+function binary_is_anticommuting(bin1, bin2, n_qubits)
+	#check if two binary vectors (i.e. Pauli words) are anticommuting
+
+    return sum(bin1[1:n_qubits] .* bin2[n_qubits+1:end] + bin1[n_qubits+1:end] .* bin2[1:n_qubits]) % 2
+end
+
+function julia_ac_sorted_insertion(H::PyObject)
+	#perform sorted in
+	pws_orig, vals_orig = antic.get_nontrivial_paulis(H)
+
+    pnum = length(pws_orig)
+
+    Pauli_cost = sum(abs.(vals_orig))
+    println("Pauli=$(Pauli_cost)($(ceil(log2(pnum)))), number of Paulis is $pnum")
+
+    n_qubits = of.count_qubits(H)
+    println("Allocating bin vectors")
+    bin_vecs = zeros(Bool,2*n_qubits, pnum)
+
+    println("Sorting by coefficients")
+    ind_ord = sortperm(abs.(vals_orig))[end:-1:1]
+    vals_ord = vals_orig[ind_ord]
+
+    println("Filling binary vectors array")
+    for i in 1:pnum
+    	bin_vecs[:,i] = qbit.pauli_word_to_binary_vector(pws_orig[ind_ord[i]], n_qubits)
+    end
+
+    is_grouped = zeros(Bool,pnum)
+    group_arrs = Array{Int64,1}[]
+    vals_arrs = Array{Complex{Float64},1}[]
+
+    println("Running sorted insertion algorithm")
+    for i in 1:pnum
+    	if is_grouped[i] == false
+    		curr_group = [i]
+    		curr_vals = [vals_ord[i]]
+    		is_grouped[i] = true
+    		for j in i+1:pnum
+    			if is_grouped[j] == false
+	    			if binary_is_anticommuting(bin_vecs[:,i],bin_vecs[:,j], n_qubits) == 1
+	    				antic_w_group = true
+	    				for k in curr_group[2:end]
+	    					if binary_is_anticommuting(bin_vecs[:,k],bin_vecs[:,j], n_qubits) == 0
+		    					antic_w_group = false
+		    					break
+		    				end
+	    				end
+
+	    				if antic_w_group == true
+		    				push!(curr_group,j)
+		    				push!(curr_vals,vals_ord[j])
+		    				is_grouped[j] = true
+		    			end
+	    			end
+	    		end
+	    	end
+    		push!(group_arrs,curr_group)
+    		push!(vals_arrs, curr_vals)
+    	end
+    end
+
+    if prod(is_grouped) == 0
+    	println("Error, not all terms are grouped after AC-SI algorithm!")
+    	@show is_grouped
+    end
+
+    num_groups = length(group_arrs)
+    group_L1 = zeros(num_groups)
+    for i in 1:num_groups
+        for val in vals_arrs[i]
+            group_L1[i] += abs2(val)
+        end
+    end
+
+    L1_norm = sum(sqrt.(group_L1))
+    return L1_norm, num_groups
 end
