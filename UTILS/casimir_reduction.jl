@@ -172,6 +172,22 @@ function cartan_tbt_purification(tbt, spin_orb=true)
 	return tbt_so - shift, sol.minimizer
 end
 
+function cartan_tbt_l1optimization(tbt, spin_orb=true)
+	# input: cartan tbt operator (and whether it is in spin-orbitals or orbitals)
+	# output: cartan tbt operator in spin-orbitals with shifted symmetries, and shift constants
+	tbt_so = tbt_to_so(tbt, spin_orb)
+
+	n_qubit = size(tbt_so)[1]
+
+	S_arr  = casimirs_builder(n_qubit, S2=false)
+
+        casprm = car2lcu.CasOpt_LinProg(tbt_so, nqubit)
+
+	shift = shift_builder(casprm, S_arr, S2=false)
+
+	return tbt_so - shift, sol.minimizer
+end
+
 function symmetry_cuadratic_optimization(tbt, spin_orb=true; S2=true, S_arr=false)
 	#finds optimal shift by minimizing fermionic two-body tensor cost of ||tbt - ∑si Si||², with Si symmetries
 	#includes Nα, Nβ, Nα², Nα*Nβ, Nβ², (and S² if S2=true) operators for symmetries
@@ -288,3 +304,5 @@ function orbital_mean_field_symmetry_reduction(tbt :: Tuple, spin_orb; u_flavour
 
 	return tbt_sym, x_vec, sol.minimizer
 end
+
+

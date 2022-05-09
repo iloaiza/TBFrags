@@ -432,4 +432,156 @@ def obttbt_pol_eval (res, obt, tbt, norb, optmtd, pout=True):
 
     return opteval
 
+#
+# SYMMETRY REDUCTION with Linear-Programming
+#
+
+#def TBT_Casimir_Red (tbt, nqubit, optmtd='interior-point', symfer=False):
+def CasOpt_LinProg (tbt, nqubit, optmtd='interior-point', symfer=False):
+#FUNCTION: Symmetry Reduction via constrained L1-norm minimization 
+    svarr = svarr_builder(nqubit)
+    hsarr = tbt2hsarr(tbt, nqubit)
+    HSmat = HSmat_builder(nqubit)
+    res = opt.linprog(svarr, A_ub=HSmat, b_ub=hsarr, bounds=(None,None), method=optmtd)
+    if ( symfer == True ): 
+        SR_tbt = Symopt_eval (res, tbt, nqubit, optmtd, pout)
+        return SR_tbt
+    return res.x[0:5]
+
+def svarr_builder(nqubit): 
+    norb = int(nqubit/2)
+    udim = (4*norb**2)
+    return np.zeros([5+udim,1])
+
+def tbt2hsarr(tbt, nqubit): 
+    norb = int(nqubit/2)
+    udim = (4*norb**2)
+    sindex = Smat_Index(nqubit)
+    return np.block([1.0*tbt[sindex],-1.0*tbt[sindex]]).reshape(2*udim,1)
+
+def HSmat_builder (nqubit): 
+    norb = int(nqubit/2)
+    udim = (4*norb**2)
+    Idim = np.identity(udim)
+    Smat = Smat_builder(nqubit)
+    return np.block([[Smat,-1.0*Idim],[-1.0*Smat,-1.0*Idim]])
+
+def Symopt_eval (res, tbt, nqubit, optmtd, pout):
+    #NOTE: This routine changes tbt
+    norb = int(nqubit/2)
+    symdim = (4*norb**2)
+    Symmat = Smat_builder(nqubit)
+    symopt = res.x[0:5].reshape(5,1)
+    sindex = Smat_Index(nqubit) 
+    casred = tbt[sindex].reshape(symdim,1) - np.matmul(Symmat,symopt)
+    l1tbt  = np.sum(np.abs(tbt))
+    l1sred = np.sum(np.abs(casred))
+    tbt[sindex] = (casred).reshape(symdim)
+    return tbt, l1tbt, l1sred
+
+def Casimir_param (res, nqubit, optmtd, pout):
+    #NOTE: This routine changes tbt
+    norb = int(nqubit/2)
+    symdim = (4*norb**2)
+    Symmat = Smat_builder(nqubit)
+    symopt = res.x[0:5].reshape(5,1)
+    sindex = Smat_Index(nqubit) 
+    casred = tbt[sindex].reshape(symdim,1) - np.matmul(Symmat,symopt)
+    l1tbt  = np.sum(np.abs(tbt))
+    l1sred = np.sum(np.abs(casred))
+    tbt[sindex] = (casred).reshape(symdim)
+    return tbt, l1tbt, l1sred
+
+
+def Smat_builder (nqubit): 
+    #Order: Nα, Nβ, Nα², NαNβ, Nβ²
+
+    #Number of unique non-zero elements of Hsdim
+    norb = int(nqubit/2)
+    ncpl = (norb)*(norb-1)
+    udim = (4*norb**2)
+    # This routine works with a fixed order for Nα, Nβ, Nα², Nβ², NαNβ 
+    Smat = np.zeros([udim, 5])
+    # Nα: 
+    Smat[0:norb,0] = 1.0
+    #Nβ: 
+    Smat[norb:2*norb,1] = 1.0
+    #Nα²: 
+    Smat[0:norb,2] = 1
+    Smat[2*norb:2*norb+ncpl,2] = 1.0
+    #Nβ²: 
+    Smat[norb:2*norb,3] = 1
+    Smat[2*norb+ncpl:2*norb+2*ncpl,3] = 1.0
+    #NαNβ: 
+    Smat[2*norb+2*ncpl:,4] = 0.5
+    return  Smat
+
+def Smat_Index (nqubit):
+    norb = int(nqubit/2)
+    #pdim = (4*norb**2) + (2*norb)
+    pdim = (4*norb**2)
+
+    Hsim = (np.zeros(pdim, dtype=np.int64), 
+            np.zeros(pdim, dtype=np.int64), 
+            np.zeros(pdim, dtype=np.int64), 
+            np.zeros(pdim, dtype=np.int64))
+
+    korb = 0
+    for iorb in range(norb): 
+        Hsim[0][korb] = 2*iorb 
+        Hsim[1][korb] = 2*iorb
+        Hsim[2][korb] = 2*iorb
+        Hsim[3][korb] = 2*iorb
+        korb += 1
+
+    for iorb in range(norb): 
+        Hsim[0][korb] = 2*iorb + 1
+        Hsim[1][korb] = 2*iorb + 1
+        Hsim[2][korb] = 2*iorb + 1
+        Hsim[3][korb] = 2*iorb + 1
+        korb += 1
+
+    for iorb in range(norb):
+    	for jorb in range(iorb+1, norb):
+            Hsim[0][korb] = 2*iorb 
+            Hsim[1][korb] = 2*iorb
+            Hsim[2][korb] = 2*jorb 
+            Hsim[3][korb] = 2*jorb
+            korb += 1
+
+            Hsim[0][korb] = 2*jorb 
+            Hsim[1][korb] = 2*jorb
+            Hsim[2][korb] = 2*iorb 
+            Hsim[3][korb] = 2*iorb
+            korb += 1
+
+    for iorb in range(norb):
+    	for jorb in range(iorb+1, norb):
+            Hsim[0][korb] = 2*iorb + 1 
+            Hsim[1][korb] = 2*iorb + 1
+            Hsim[2][korb] = 2*jorb + 1 
+            Hsim[3][korb] = 2*jorb + 1
+            korb += 1
+
+            Hsim[0][korb] = 2*jorb + 1
+            Hsim[1][korb] = 2*jorb + 1
+            Hsim[2][korb] = 2*iorb + 1
+            Hsim[3][korb] = 2*iorb + 1
+            korb += 1
+
+    for iorb in range(norb):
+    	for jorb in range(norb):
+            Hsim[0][korb] = 2*iorb + 1 
+            Hsim[1][korb] = 2*iorb + 1
+            Hsim[2][korb] = 2*jorb
+            Hsim[3][korb] = 2*jorb
+            korb += 1
+
+            Hsim[0][korb] = 2*jorb 
+            Hsim[1][korb] = 2*jorb
+            Hsim[2][korb] = 2*iorb + 1
+            Hsim[3][korb] = 2*iorb + 1
+            korb += 1
+
+    return Hsim
 
