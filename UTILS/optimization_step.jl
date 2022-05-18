@@ -1,15 +1,31 @@
 #FUNCTIONS WHICH HAVE SINGLE STEP USED IN OPTIMIZATION DRIVERS
 
 function greedy_step_optimization(target, class; spin_orb = false,
-				 grad=false, x0=false, n = length(target[:,1,1,1]), frag_flavour=META.ff, u_flavour=META.uf)
+				 grad=false, x0=false, n = length(target[:,1,1,1]),
+				 frag_flavour=META.ff, u_flavour=META.uf, init_svd=GREEDY_CSA_FROM_SVD,
+				 IS_CSA = CSA_family(frag_flavour), IS_SINGLES = singles_family(frag_flavour))
 	u_num = unitary_parameter_number(n)
 	fcl = frag_coeff_length(n, frag_flavour)
 	num_zeros = frag_num_zeros(n, frag_flavour)
 
 	if x0 == false
-		#starting initial random condition, initialize frag.cn to zeros and u_params to [0,2π]
 		x0 = zeros(u_num + fcl)
-		x0[1+num_zeros:end] = 2π*rand(fcl+u_num-num_zeros)
+		if init_svd == false || IS_CSA == false
+			#starting initial random condition, initialize frag.cn to zeros and u_params to [0,2π]
+			x0[1+num_zeros:end] = 2π*rand(fcl+u_num-num_zeros)
+		else
+			if typeof(u_flavour) != MF_real
+				error("Trying to use initial SVD solution for different rotation than MF_real, not implemented. Change GREEDY_CSA_FROM_SVD to false in config to use random initial guess instead.")
+			end
+			#starting from SVD solution for CSA fragment. Will just consider two-body part and real-rotations
+			if IS_SINGLES == false
+				csa_coeff, u_params = tbt_svd_1st(target)
+				x0 .= cat(u_params, csa_coeff, dims=1)
+			else
+				csa_coeff, u_params = tbt_svd_1st(target[2])
+				x0[n+1:end] .= cat(u_params, csa_coeff, dims=1)
+			end
+		end
 	end
 
 	function cost(x)

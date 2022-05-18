@@ -172,6 +172,44 @@ function cartan_tbt_purification(tbt, spin_orb=true)
 	return tbt_so - shift, sol.minimizer
 end
 
+function one_body_symmetry_cuadratic_optimization(obt, spin_orb=true)
+	#finds optimal shift by minimizing fermionic two-body tensor cost of ||obt - ∑si Si||², with Si symmetries
+	#includes Nα, Nβ operators for symmetries
+	#returns obt - ∑si Si and si vector
+	if spin_orb == true
+		obt_so = obt_orb_to_so(obt)
+	else
+		obt_so = obt
+	end
+	n_qubit = size(obt_so)[1]
+
+	S_arr,_ = casimirs_builder(n_qubit, one_body=true)
+	
+	s_len = length(S_arr)
+
+	A_mat = zeros(s_len,s_len)
+	v_vec = zeros(s_len)
+
+	for i in 1:s_len
+		v_vec[i] = sum(obt_so .* S_arr[i])
+	end
+
+	for i in 1:s_len
+		for j in i:s_len
+			A_mat[i,j] = sum(S_arr[i] .* S_arr[j])
+			A_mat[j,i] = A_mat[i,j]
+		end
+	end
+
+	A_inv = inv(A_mat)
+
+	x_vec = A_inv * v_vec
+
+	obt_sym = obt_so - shift_builder(x_vec, S_arr)
+
+	return obt_sym, x_vec
+end
+
 function symmetry_cuadratic_optimization(tbt, spin_orb=true; S2=true, S_arr=false)
 	#finds optimal shift by minimizing fermionic two-body tensor cost of ||tbt - ∑si Si||², with Si symmetries
 	#includes Nα, Nβ, Nα², Nα*Nβ, Nβ², (and S² if S2=true) operators for symmetries

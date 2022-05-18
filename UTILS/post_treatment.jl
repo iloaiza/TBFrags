@@ -87,15 +87,14 @@ function py_sparse_import(py_sparse_mat; imag_tol=1e-14)
 	return sparse_mat
 end
 
-function qubit_op_range(op_qubit, n_qubit=of.count_qubits(op_qubit); imag_tol=1e-16, ncv=minimum([50,2^n_qubit]))
+function qubit_op_range(op_qubit, n_qubit=of.count_qubits(op_qubit); imag_tol=1e-16, ncv=minimum([50,2^n_qubit]), tol=1e-3)
 	#Calculates maximum and minimum eigenvalues for qubit operator
 	op_py_sparse_mat = of.qubit_operator_sparse(op_qubit)
 	sparse_op = py_sparse_import(op_py_sparse_mat, imag_tol=imag_tol)
 
-	# =
 	if n_qubit >= 2
-		E_max,_ = eigs(sparse_op, nev=1, which=:LR, maxiter = 500, tol=1e-3, ncv=ncv)
-		E_min,_ = eigs(sparse_op, nev=1, which=:SR, maxiter = 500, tol=1e-3, ncv=ncv)
+		E_max,_ = eigs(sparse_op, nev=1, which=:LR, maxiter = 500, tol=tol, ncv=ncv)
+		E_min,_ = eigs(sparse_op, nev=1, which=:SR, maxiter = 500, tol=tol, ncv=ncv)
 	else
 		E,_ = eigen(collect(sparse_op))
 		E = real.(E)
@@ -103,8 +102,7 @@ function qubit_op_range(op_qubit, n_qubit=of.count_qubits(op_qubit); imag_tol=1e
 		E_min = minimum(E)
 	end
 	E_range = real.([E_min[1], E_max[1]])
-	# =#
-
+	
 	#= Debug, checks it's the same as full diagonalization
 	E, _ = eigen(collect(sparse_op))
 	E = real.(E)
@@ -128,8 +126,35 @@ function op_range(op; transformation=transformation, imag_tol=1e-16)
 	return qubit_op_range(op_qubit, imag_tol=imag_tol)
 end
 
+function cartan_to_qubit_l1_treatment(cartan_tbt, spin_orb)
+	#input: cartan polynomial of n_i's
+	#output: transforms into ∑λij/4 zi zj and returns sqrt norm
+	q_op = of.QubitOperator.zero()
+	tbt_so = tbt_to_so(cartan_tbt, spin_orb) / 4
+	n = size(tbt_so)[1]
+
+	global λVL1 = 0.0
+	global λVL2 = 0.0
+	for i in 1:n
+		for j in 1:n
+			global λVL1 += abs(tbt_so[i,i,j,j])/2
+			if i != j
+				z_string = "Z$i Z$j"
+				q_op += tbt_so[i,i,j,j] * of.QubitOperator(z_string)
+				global λVL2 += abs(tbt_so[i,i,j,j])/2
+			end
+		end
+	end
+
+	q_range = qubit_op_range(q_op, tol=1e-3)
+	ΔE = (q_range[2] - q_range[1])/2
+
+	#@show λVL1, λVL2, ΔE
+	return ΔE
+end
+
 function L1_frags_treatment(CARTAN_TBTS, spin_orb, α_tot = size(CARTAN_TBTS)[1], n=size(CARTAN_TBTS)[2])
-	#Caclulate different L1 norms for group of fragments
+	#Calculate different L1 norms for group of fragments
 	CSA_L1 = SharedArray(zeros(α_tot)) #holds (sum _ij |λij|) L1 norm for CSA polynomial
 	E_RANGES = SharedArray(zeros(α_tot,2)) #holds eigenspectrum boundaries for each operator
 	
@@ -173,6 +198,9 @@ function L1_frags_treatment(CARTAN_TBTS, spin_orb, α_tot = size(CARTAN_TBTS)[1]
 		TBT_TOT += TBTS[i,:,:,:,:]
 	end
 	# =#
+	if spin_orb == false
+		E_RANGES *= 4
+	end
 
 	return CSA_L1, E_RANGES
 end

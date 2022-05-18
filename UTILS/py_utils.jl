@@ -351,7 +351,7 @@ function binary_is_anticommuting(bin1, bin2, n_qubits)
 end
 
 function julia_ac_sorted_insertion(H::PyObject)
-	#perform sorted in
+	#perform sorted insertion on QubitOperator from openfermion
 	pws_orig, vals_orig = antic.get_nontrivial_paulis(H)
 
     pnum = length(pws_orig)
