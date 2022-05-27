@@ -13,7 +13,6 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=true, tiny=SVD_tiny, ret_op = 
 
 	println("Diagonalizing two-body tensor")
 	@time Λ,U = eigen(tbt_res)
-	@show (maximum(Λ) - minimum(Λ))/2
 	ind=sortperm(abs.(Λ))[end:-1:1]
     Λ = Λ[ind]
     U=U[:,ind]
@@ -179,14 +178,14 @@ end
 
 function tbt_svd_1st(tbt :: Array; debug=false, tiny=SVD_tiny)
 	#returns the largest SVD component from tbt in CSA fragment coefficients
-	println("Starting tbt_svd_1st routine!")
+	#println("Starting tbt_svd_1st routine!")
 	n = size(tbt)[1]
 	N = n^2
 
 	tbt_res = Symmetric(reshape(tbt, (N,N)))
 
-	println("Diagonalizing")
-	@time Λ,U = eigen(tbt_res)
+	#println("Diagonalizing")
+	Λ,U = eigen(tbt_res)
 	ind=sortperm(abs.(Λ))[end:-1:1]
     Λ = Λ[ind]
     U=U[:,ind]
@@ -209,7 +208,7 @@ function tbt_svd_1st(tbt :: Array; debug=false, tiny=SVD_tiny)
 
     ωl, Ul = eigen(cur_l)
     
-    return SVD_to_CSA(Λ[1], ωl, Ul, debug=true)
+    return SVD_to_CSA(Λ[1], ωl, Ul)
 end
 
 function svd_optimized(tbt :: Array; tol=1e-6, spin_orb=true, tiny=SVD_tiny)
@@ -357,7 +356,7 @@ function svd_optimized_df(tbt :: Tuple; tol=1e-6, tiny=SVD_tiny)
         end
     
 		ωs_arr[i,:], _ = eigen(cur_l)
-		ωs_arr[i,:] *= sqrt(2*Λ[i])
+		ωs_arr[i,:] *= sqrt(2*abs(Λ[i]))
 	end
 
 	obt_tilde = tbt[1] + 2*sum([tbt[2][:,:,r,r] for r in 1:n])
@@ -365,20 +364,15 @@ function svd_optimized_df(tbt :: Tuple; tol=1e-6, tiny=SVD_tiny)
     λT = sum(abs.(obt_D))
     
     λDF = 0.0
-    λDF_red = 0.0
     for i in 1:num_ops
     	λDF += sum(abs.(ωs_arr[i,:]))^2
-    	λDF_red -= sum(abs2.(ωs_arr[i,:]))
     end
     λDF /= 4
-    λDF_red /= 8 #/4 division from ni to zi (Jordan-Wigner) mapping, and /2 factor since only αα and ββ components are cancelled
-    λDF_red += λDF
+    
 
-    @show λT
-    @show λDF, λDF_red
+    @show λT, λDF
     @show λT + λDF
-    @show λT + λDF_red
-
+    
     return λT + λDF
 end
 

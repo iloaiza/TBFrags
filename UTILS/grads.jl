@@ -186,7 +186,8 @@ end
 function parameter_gradient!(storage, x, target, class, n; spin_orb=true, frag_flavour=META.ff, u_flavour=META.uf)
 	if typeof(u_flavour) == MF_real
 		if typeof(frag_flavour) == CGMFR
-			return storage .= CGMFR_MF_real_gradient(class, x, target, spin_orb, n)
+			storage .= CGMFR_MF_real_gradient(class, x, target, spin_orb, n)
+            return storage
 		end
 	end
 
@@ -196,7 +197,8 @@ end
 function full_rank_gradient!(storage, x, target, class_arr, n; spin_orb=true, frag_flavour=META.ff, u_flavour=META.uf)
 	if typeof(u_flavour) == MF_real
 		if typeof(frag_flavour) == CGMFR
-			return storage .= CGMFR_MF_real_gradient_full_rank(class_arr, x, target, spin_orb, n)
+			storage .= CGMFR_MF_real_gradient_full_rank(class_arr, x, target, spin_orb, n)
+            return storage
 		end
 	end
 

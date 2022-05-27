@@ -126,8 +126,38 @@ function op_range(op; transformation=transformation, imag_tol=1e-16)
 	return qubit_op_range(op_qubit, imag_tol=imag_tol)
 end
 
+function cartan_to_qubit_naive_treatment(cartan_tbt, spin_orb)
+	#input: cartan polynomial of n_i's
+	#transforms fermionic cartan polynomial using 1-2ninj  
+	#output: transforms into ∑λij/2 zi zj and returns sqrt norm
+	q_op = of.QubitOperator.zero()
+	tbt_so = tbt_to_so(cartan_tbt, spin_orb) / 2
+	n = size(tbt_so)[1]
+
+	for i in 1:n
+		for j in 1:n
+			if i != j
+				zi = of.QubitOperator("Z$i")
+				zj = of.QubitOperator("Z$j")
+				zizj = of.QubitOperator("Z$i Z$j")
+				q_op += 0.5*tbt_so[i,i,j,j] * (zi+zj-zizj)
+			else
+				z_string = "Z$i"
+				q_op += tbt_so[i,i,i,i] * of.QubitOperator(z_string)
+			end
+		end
+	end
+
+	q_range = qubit_op_range(q_op, tol=1e-3)
+	ΔE = (q_range[2] - q_range[1])/2
+
+	#@show λVL1, λVL2, ΔE
+	return ΔE
+end
+
 function cartan_to_qubit_l1_treatment(cartan_tbt, spin_orb)
 	#input: cartan polynomial of n_i's
+	#transforms fermionic tbt into (1-2ni)(1-2nj) -> zizj, requires correction to 1-body term
 	#output: transforms into ∑λij/4 zi zj and returns sqrt norm
 	q_op = of.QubitOperator.zero()
 	tbt_so = tbt_to_so(cartan_tbt, spin_orb) / 4
@@ -284,7 +314,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 		println("L1 of fragment $i modified from $orig_l1 to $pur_l1")
 		PUR_SVD_CARTANS[i,:,:,:,:] = pur_tbt_svd
 		PUR_SVD_COEFFS[i,:] = pur_coeffs_svd
-		shift = shift_builder(pur_coeffs_svd, S_arr, S2=S2)
+		shift = shift_builder(pur_coeffs_svd, S_arr)
 		PUR_SVD_TBTS[i,:,:,:,:] = SVD_TBTS[i,:,:,:,:] - shift
 	end
 
@@ -292,7 +322,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	for i in 1:5
 		x = PUR_SVD_COEFFS[:,i]
 	end
-	shift = shift_builder(x, S_arr, S2=S2)
+	shift = shift_builder(x, S_arr)
 	H_SYM_FERM_SVD = SVD_OP - tbt_to_ferm(shift, true)
 	# =#
 
@@ -306,7 +336,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	global H_SYM_FERM = of.FermionOperator.zero()
 	for i in 1:α_tot
 		x = PUR_COEFFS[i]
-		shift = shift_builder(x, S_arr, S2=S2)
+		shift = shift_builder(x, S_arr)
 		global H_SYM_FERM += tbt_to_ferm(tbt_to_so(TBTS[i,:,:,:,:], spin_orb) - shift, true)
 	end
 	H_SYM_FERM = of_simplify(H_SYM_FERM)
@@ -336,7 +366,7 @@ function H_POST(tbt, h_ferm, x0, K0, spin_orb; frag_flavour=META.ff, Q_TREAT=tru
 	Etot_r = op_range(H_sym_opt)
 	@show Etot_r
 	@show (Etot_r[2] - Etot_r[1])/2
-	full_shift = shift_builder(x_opt, S_arr, S2=S2)
+	full_shift = shift_builder(x_opt, S_arr)
 	@show of_simplify(h_ferm - H_sym_opt - tbt_to_ferm(full_shift, true))
 
 	println("CSA L1 bounds (NR):")
@@ -446,7 +476,7 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true, linopt=true)
 	TOT_SHIFT = zeros(n_qubit,n_qubit,n_qubit,n_qubit)
 	for i in 1:α_SVD
 		SVD_THEN_PUR_TBTS[i,:,:,:,:], X_OPTS[i,:] = symmetry_cuadratic_optimization(SVD_TBTS[i,:,:,:,:], true, S2=S2)
-		shift = shift_builder(X_OPTS[i,:], S_arr, S2=S2)
+		shift = shift_builder(X_OPTS[i,:], S_arr)
 		SVD_THEN_PUR_CARTAN_TBTS[i,:,:,:,:] = SVD_CARTAN_TBTS[i,:,:,:,:] - shift
 		TOT_SHIFT += shift
 	end
@@ -462,7 +492,7 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true, linopt=true)
 	X_OPTS_2 = zeros(PUR_α_SVD, length(x_opt))
 	for i in 1:PUR_α_SVD
 		PUR2_TBTS[i,:,:,:,:], X_OPTS_2[i,:] = symmetry_cuadratic_optimization(PUR_SVD_TBTS[i,:,:,:,:], true, S2=S2)
-		shift = shift_builder(X_OPTS_2[i,:], S_arr, S2=S2)
+		shift = shift_builder(X_OPTS_2[i,:], S_arr)
 		PUR2_CARTAN_TBTS[i,:,:,:,:] = PUR_SVD_CARTAN_TBTS[i,:,:,:,:] - shift
 		TOT_SHIFT_2 += shift
 	end
@@ -482,7 +512,7 @@ function H_TREATMENT(tbt, h_ferm, spin_orb; Q_TREAT=true, S2=true, linopt=true)
 	@time Etot_r = op_range(H_sym_opt)
 	@show Etot_r
 	@show (Etot_r[2] - Etot_r[1])/2
-	full_shift = shift_builder(x_opt, S_arr, S2=S2)
+	full_shift = shift_builder(x_opt, S_arr)
 
 	println("Showing range of SVD then symmetry-optimized hamiltonian")
 	H_sym_opt_2 = tbt_to_ferm(tbt_so - TOT_SHIFT, true)
@@ -603,7 +633,7 @@ function QUBIT_TREATMENT(tbt, h_ferm, spin_orb; S2=true, linopt=true)
 	#@time Etot_r = op_range(H_sym_opt)
 	#@show Etot_r
 	#@show (Etot_r[2] - Etot_r[1])/2
-	#full_shift = shift_builder(x_opt, S_arr, S2=S2)
+	#full_shift = shift_builder(x_opt, S_arr)
 
 	#=
 	println("Showing range of unitary + symmetry-optimized hamiltonian")
@@ -611,7 +641,7 @@ function QUBIT_TREATMENT(tbt, h_ferm, spin_orb; S2=true, linopt=true)
 	@time Etot_r = op_range(H_sym_opt_SD)
 	@show Etot_r
 	@show (Etot_r[2] - Etot_r[1])/2
-	#full_shift = shift_builder(x_opt, S_arr, S2=S2)
+	#full_shift = shift_builder(x_opt, S_arr)
 	# =# # =# # =# # =#
 
 	println("Finished fermionic routine, starting qubit methods and final numbers...")
@@ -661,5 +691,212 @@ function QUBIT_TREATMENT(tbt, h_ferm, spin_orb; S2=true, linopt=true)
 	
 	println("Tapered unitary + symmetry-shifted Hamiltonian:")
 	qubit_treatment(H_tapered_sym_SD)
+	# =#
+end
+
+function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
+	println("Starting qubit treatment...")
+	# =
+	println("Performing fermion to qubit mapping:")
+	@time H_full_q = qubit_transform(h_ferm, "jw")
+	#@show H_full_q
+	println("\n\n\n Qubit treatment of Hamiltonian:")
+	qubit_treatment(H_full_q)
+	#= #
+	println("Starting T' boosted AC-SI routine")
+	@time L1,num_ops = bin_anticommuting_jw_sorted_insertion(tbt_mo_tup[1], tbt_mo_tup[2], cutoff = 1e-6)
+	println("BOOSTED AC-SI L1=$(L1)($(ceil(log2(num_ops))))\n\n\n")
+	# =# # =#
+
+	SVD_tol = 1e-6
+	CSA_tol = 1e-6
+
+	#=
+	println("\n\n\n Starting SVD routine for separated 1 and 2-body terms with cutoff tolerance $SVD_tol")
+	@time NR_2B, SR_2B = svd_optimized(tbt_mo_tup[2], tol=SVD_tol, spin_orb=false)
+	D,U = eigen(tbt_mo_tup[1])
+	RANGES = zeros(1,2)
+	obt_so = obt_orb_to_so(Diagonal(D))
+	RANGES[:] = CSA_obt_range(obt_so)
+	SR_2B = vcat(SR_2B, RANGES)
+	push!(NR_2B, cartan_obt_l1_cost(D, false))
+	ΔE_2B = [(SR_2B[i,2] - SR_2B[i,1])/2 for i in 1:length(NR_2B)]
+
+	println("CSA L1 bounds (NR) (SVD 1-2):")
+	@show sum(NR_2B)/2
+
+	println("Shifted minimal norm (SR) (SVD 1-2):")
+	@show sum(ΔE_2B)
+	# =#
+
+	println("\n\n Starting CSA routine for separated 1 and 2-body terms")
+	CSA_2_NAME = "CSA_2_" * ham_name 
+	n = size(tbt_mo_tup[1])[1]
+	obt_tilde = tbt_mo_tup[1] + 2*sum([tbt_mo_tup[2][:,:,r,r] for r in 1:n])
+	obt_D, _ = eigen(obt_tilde)
+	λT = sum(abs.(obt_D))
+
+	FRAGS = run_optimization("g", tbt_mo_tup[2], CSA_tol, 1, 200, false, false, Float64[], Int64[], false, CSA_2_NAME, frag_flavour=CSA(), u_flavour=MF_real())
+	α_CSA = length(FRAGS)
+
+	CARTANS = zeros(α_CSA,n,n,n,n)
+	for i in 1:α_CSA
+		CARTANS[i,:,:,:,:] = fragment_to_normalized_cartan_tbt(FRAGS[i], frag_flavour=CSA())
+	end
+	global λV = 0.0
+	for i in 1:α_CSA
+		global λV += cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], false)
+	end
+	@show λT, λV, λT+λV
+
+	println("\n\n\n Starting df routine...")
+	@time svd_optimized_df(tbt_mo_tup, tol=1e-6, tiny=1e-8)
+
+	#=
+	println("\n\n\n			Starting SVD routine for separated terms with Google's grouping technique:")
+	CARTANS, TBTS = tbt_svd(tbt_mo_tup[2], tol=SVD_tol, spin_orb=false, ret_op=false)
+	α_SVD = size(CARTANS)[1]
+	n = size(tbt_mo_tup[1])[1]
+	obt_tilde = tbt_mo_tup[1] + 2*sum([tbt_mo_tup[2][:,:,r,r] for r in 1:n])
+	obt_D, _ = eigen(obt_tilde)
+	λT = sum(abs.(obt_D))
+
+	global λV = 0.0
+	for i in 1:α_SVD
+		global λV += cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], false)
+	end
+	@show λT, λV, λT+λV
+	# =#
+
+	println("\n\n\n			Starting SVD routine for combined 1+2e terms with Google's grouping technique:")
+	tbt_so = tbt_to_so(tbt_mo_tup, false)
+	CARTANS, TBTS = tbt_svd(tbt_so, tol=SVD_tol, spin_orb=true, ret_op=false)
+	α_SVD = size(CARTANS)[1]
+	n_so = 2n
+
+	global obt_corr = zeros(n_so,n_so)
+	for i in 1:α_SVD
+		global obt_corr += 2*sum([TBTS[i,:,:,p,p] for p in 1:n_so])
+	end
+	obt_D, _ = eigen(obt_corr)
+	λT = sum(abs.(obt_D))/2
+
+	global λV = 0.0
+	for i in 1:α_SVD
+		global λV += cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], true)
+	end
+	@show λT, λV, λT+λV
+
+	#=
+	println("\n\n\n			Starting CSA routine for combined 1+2e terms with Google's grouping technique:")
+	tbt_so = tbt_to_so(tbt_mo_tup, false)
+	CSA_12_NAME = "CSA_12_" * ham_name
+	FRAGS = run_optimization("g", tbt_so, CSA_tol, 1, 200, false, false, Float64[], Int64[], true, CSA_12_NAME, frag_flavour=CSA(), u_flavour=MF_real())
+	α_CSA = length(FRAGS)
+
+	CARTANS = zeros(α_CSA,n_so,n_so,n_so,n_so)
+	TBTS = zeros(α_CSA,n_so,n_so,n_so,n_so)
+	for i in 1:α_CSA
+		CARTANS[i,:,:,:,:] = fragment_to_normalized_cartan_tbt(FRAGS[i], frag_flavour=CSA())
+		TBTS[i,:,:,:,:] = fragment_to_tbt(FRAGS[i], frag_flavour=CSA(), u_flavour=MF_real())
+	end
+	α_CSA = size(CARTANS)[1]
+
+	global obt_corr = zeros(n_so,n_so)
+	for i in 1:α_CSA
+		global obt_corr += 2*sum([TBTS[i,:,:,p,p] for p in 1:n_so])
+	end
+	obt_D, _ = eigen(obt_corr)
+	λT = sum(abs.(obt_D))/2
+
+	global λV = 0.0
+	for i in 1:α_CSA
+		global λV += cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], true)
+	end
+	@show λT, λV, λT+λV
+	# =#
+
+	println("\n\n\n			STARTING SYMMETRY OPTIMIZATIONS ROUTINE: BEFORE")
+	println("Calculations for 1+2 term")
+	@time tbt_ham_opt, x_opt = symmetry_linprog_optimization(tbt_so, true)
+	CARTANS, TBTS = tbt_svd(tbt_ham_opt, tol=SVD_tol, spin_orb=true, ret_op=false)
+	α_SVD = size(CARTANS)[1]
+
+	println("Starting naive treatment with 1-2ninj mapping:")
+	global λnaive = 0.0
+	for i in 1:α_SVD
+		global λnaive += cartan_to_qubit_naive_treatment(CARTANS[i,:,:,:,:], true)
+	end
+	@show λnaive
+
+	println("\nUsing (1-2ni)(1-2nj) grouping:")
+	global obt_corr = zeros(n_so,n_so)
+	for i in 1:α_SVD
+		global obt_corr += 2*sum([TBTS[i,:,:,p,p] for p in 1:n_so])
+	end
+	obt_D, _ = eigen(obt_corr)
+	λT = sum(abs.(obt_D))/2
+	@show λT
+	obt_corr, _ = one_body_symmetry_cuadratic_optimization(obt_corr, true)
+	obt_D, _ = eigen(obt_corr)
+	λT = sum(abs.(obt_D))/2
+
+	global λV = 0.0
+	for i in 1:α_SVD
+		global λV += cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], true)
+	end
+	@show λT, λV, λT+λV
+
+	println("\nOptimizing two-body separated from 1-body")
+	tbt_so = tbt_to_so(tbt_mo_tup[2], false)
+	@time tbt_ham_opt, x_opt = symmetry_linprog_optimization(tbt_so, true)
+	CARTANS, TBTS = tbt_svd(tbt_ham_opt, tol=SVD_tol, spin_orb=true, ret_op=false)
+	α_SVD = size(CARTANS)[1]
+	global obt_corr = obt_orb_to_so(tbt_mo_tup[1])
+	for i in 1:α_SVD
+		global obt_corr += 2*sum([TBTS[i,:,:,p,p] for p in 1:n_so])
+	end
+	obt_D, _ = eigen(obt_corr)
+	λT = sum(abs.(obt_D))/2
+	@show λT
+	obt_corr, _ = one_body_symmetry_cuadratic_optimization(obt_corr, true)
+	obt_D, _ = eigen(obt_corr)
+	λT = sum(abs.(obt_D))/2
+
+	global λV = 0.0
+	for i in 1:α_SVD
+		global λV += cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], true)
+	end
+	@show λT, λV, λT+λV
+
+	println("Starting naive treatment with 1-2ninj mapping:")
+	global λnaive = 0.0
+	for i in 1:α_SVD
+		global λnaive += cartan_to_qubit_naive_treatment(CARTANS[i,:,:,:,:], true)
+	end
+	global obt_corr = obt_orb_to_so(tbt_mo_tup[1])
+	obt_D, _ = eigen(obt_corr)
+	λT = sum(abs.(obt_D))/2
+	@show λT
+	obt_corr, _ = one_body_symmetry_cuadratic_optimization(obt_corr, true)
+	obt_D, _ = eigen(obt_corr)
+	λT = sum(abs.(obt_D))/2
+	@show λnaive, λT + λnaive
+
+	#=
+	println("\n\n\n Starting SVD routine for 1+2 body terms with cutoff tolerance $SVD_tol:")
+	println("Transforming spacial orbital tensors to spin-orbitals")
+	@time tbt_so = tbt_to_so(tbt_mo_tup, false)
+	@time NR_tot, SR_tot = svd_optimized(tbt_so, tol=SVD_tol, spin_orb=true)
+	ΔE_tot = [(SR_tot[i,2] - SR_tot[i,1])/2 for i in 1:length(NR_tot)]
+
+	println("CSA L1 bounds (NR) (SVD 1+2):")
+	@show sum(NR_tot)/2
+
+	println("Shifted minimal norm (SR) (SVD 1+2):")
+	@show sum(ΔE_tot)
+
+	println("\n\n\n Starting optimized SVD routine for 1+2 body terms with cutoff tolerance $SVD_tol:")
+	@time svd_optimized_so(tbt_so, tol=SVD_tol)
 	# =#
 end

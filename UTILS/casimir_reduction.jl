@@ -131,7 +131,7 @@ function casimirs_builder(n_qubit; debug=false, S2=false, one_body=false)
 	end
 end
 
-function shift_builder(x, S_arr; S2=false)
+function shift_builder(x, S_arr)
 	# S2 = false implies S_arr = [Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt]
 	# otherwise S_arr = [Nα_tbt, Nβ_tbt, Nα2_tbt, NαNβ_tbt, Nβ2_tbt, S2_tbt]
 	# builds shift corresponding to x value
@@ -155,7 +155,7 @@ function cartan_tbt_purification(tbt, spin_orb=true)
 	S_arr = casimirs_builder(n_qubit, S2=false)
 
 	function cost(x) 
-		shift = shift_builder(x, S_arr, S2=false)
+		shift = shift_builder(x, S_arr)
 		#return cartan_tbt_l1_cost(tbt_so - shift, true)
 		return cartan_tbt_l2_cost(tbt_so - shift, true)
 	end
@@ -167,7 +167,7 @@ function cartan_tbt_purification(tbt, spin_orb=true)
 	#@show cost(x0)
 	#@show sol.minimum
 	x = sol.minimizer
-	shift = shift_builder(x, S_arr, S2=false)
+	shift = shift_builder(x, S_arr)
 
 	return tbt_so - shift, sol.minimizer
 end
@@ -219,9 +219,9 @@ function symmetry_linprog_optimization(tbt, spin_orb=true)
 
 	S_arr  = casimirs_builder(n_qubit, S2=false)
 
-    x_vec = car2lcu.CasOpt_LinProg(tbt_so, nqubit)
+    x_vec = car2lcu.CasOpt_LinProg(tbt_so, n_qubit)
 
-	tbt_sym = tbt_so - shift_builder(casprm, S_arr, S2=false)
+	tbt_sym = tbt_so - shift_builder(x_vec, S_arr)
 
 	return tbt_sym, x_vec
 end
@@ -258,7 +258,7 @@ function symmetry_cuadratic_optimization(tbt, spin_orb=true; S2=true, S_arr=fals
 
 	x_vec = A_inv * v_vec
 
-	tbt_sym = tbt_so - shift_builder(x_vec, S_arr, S2=S2)
+	tbt_sym = tbt_so - shift_builder(x_vec, S_arr)
 
 	return tbt_sym, x_vec
 end

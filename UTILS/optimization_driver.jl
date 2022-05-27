@@ -1,18 +1,35 @@
-function run_optimization(opt_flavour, tbt, decomp_tol, reps, α_max, grad, verbose, x0, K0, spin_orb, f_name; frag_flavour=META.ff)
+function run_optimization(opt_flavour, tbt, decomp_tol,
+			 reps, α_max, grad, verbose, x0, K0, spin_orb, f_name;
+			 frag_flavour=META.ff, u_flavour=META.uf)
+
 	if opt_flavour == "full-rank" || opt_flavour == "fr"
-		@time FRAGS = full_rank_driver(tbt, decomp_tol, f_name = f_name, reps = reps, α_max=α_max, grad=grad, verbose=verbose, x0=x0, K0=K0, spin_orb=spin_orb)
+		@time FRAGS = full_rank_driver(tbt, decomp_tol,
+		 	f_name = f_name, reps = reps, α_max=α_max, grad=grad,
+		 	verbose=verbose, x0=x0, K0=K0, spin_orb=spin_orb, frag_flavour=frag_flavour, u_flavour=u_flavour)
+
 	elseif opt_flavour == "greedy" || opt_flavour == "g"
-		@time FRAGS = greedy_driver(tbt, decomp_tol, f_name = f_name, reps = reps, α_max=α_max, grad=grad, verbose=verbose, spin_orb=spin_orb, x0=x0, K0=K0)
+		@time FRAGS = greedy_driver(tbt, decomp_tol, f_name = f_name,
+				 reps = reps, α_max=α_max, grad=grad, verbose=verbose, 
+				 spin_orb=spin_orb, x0=x0, K0=K0, frag_flavour=frag_flavour, u_flavour=u_flavour)
+
 	elseif opt_flavour == "relaxed-greedy" || opt_flavour == "rg"
-		@time FRAGS = relaxed_greedy_driver(tbt, decomp_tol, f_name = f_name, reps = reps, α_max=α_max, grad=grad, verbose=verbose, spin_orb=spin_orb, x0=x0, K0=K0)
+		@time FRAGS = relaxed_greedy_driver(tbt, decomp_tol, f_name = f_name,
+				reps = reps, α_max=α_max, grad=grad, verbose=verbose,
+				spin_orb=spin_orb, x0=x0, K0=K0, frag_flavour=frag_flavour, u_flavour=u_flavour)
+
 	elseif opt_flavour == "og" || opt_flavour == "orthogonal-greedy"
 		println("Using λ=$λort for orthogonal greedy constrain value")
-		@time FRAGS = orthogonal_greedy_driver(tbt, decomp_tol, f_name = f_name, reps = reps, α_max=α_max, grad=grad, verbose=verbose, spin_orb=spin_orb)
+		@time FRAGS = orthogonal_greedy_driver(tbt, decomp_tol, f_name = f_name,
+		reps = reps, α_max=α_max, grad=grad, verbose=verbose, spin_orb=spin_orb, 
+		frag_flavour=frag_flavour, u_flavour=u_flavour)
+
 	elseif opt_flavour == "frni" || opt_flavour == "full-rank-non-iterative"
 		num_classes = number_of_classes(frag_flavour)
 		class_train = rand(1:num_classes, α_max)
 		@show class_train
-		@time FRAGS = full_rank_non_iterative_driver(tbt, f_name=f_name, grad=grad, verbose=verbose, x0=x0, K0=class_train, spin_orb=spin_orb)
+		@time FRAGS = full_rank_non_iterative_driver(tbt, f_name=f_name, grad=grad, verbose=verbose,
+				x0=x0, K0=class_train, spin_orb=spin_orb, frag_flavour=frag_flavour, u_flavour=u_flavour)
+		
 	else
 		error("Trying to do decomposition with optimization flavour $opt_flavour, not implemented!")
 	end
@@ -117,7 +134,7 @@ function greedy_driver(target, decomp_tol; reps = 1,
 		cost = FCost[ind_min]
 		x0 = X_ARR[ind_min,:]
 		frag = fragment(x0[fcl+1:end], x0[1:fcl], k_min, n_qubit, spin_orb)
-		curr_tbt += fragment_to_tbt(frag)
+		curr_tbt += fragment_to_tbt(frag, frag_flavour=frag_flavour, u_flavour=u_flavour)
 		push!(FRAGS, frag)
 		println("Finished calculation for fragment $α after $(time()-t00) seconds,
 		 chose transformation of type $k_min, current cost is $cost")
