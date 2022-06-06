@@ -432,95 +432,90 @@ def obttbt_pol_eval (res, obt, tbt, norb, optmtd, pout=True):
 
     return opteval
 
+
 #
-# SYMMETRY REDUCTION with Linear-Programming
+#
+# Fermionic-SYMMETRY REDUCTION with Linear-Programming
 #
 
-#def TBT_Casimir_Red (tbt, nqubit, optmtd='interior-point', symfer=False):
-def CasOpt_LinProg (tbt, nqubit, optmtd='interior-point', symfer=False):
+def CasOpt_LinProg (tbt, n_qubit, optmtd='interior-point', symfer=False):
 #FUNCTION: Symmetry Reduction via constrained L1-norm minimization 
-    svarr = svarr_builder(nqubit)
-    hsarr = tbt2hsarr(tbt, nqubit)
-    HSmat = HSmat_builder(nqubit)
+    svarr = svarr_builder(n_qubit)
+    hsarr = tbt2hsarr(tbt, n_qubit)
+    HSmat = HSmat_builder(n_qubit)
     res = opt.linprog(svarr, A_ub=HSmat, b_ub=hsarr, bounds=(None,None), method=optmtd)
     if ( symfer == True ): 
-        SR_tbt = Symopt_eval (res, tbt, nqubit, optmtd, pout)
+        SR_tbt = Symopt_eval (res, tbt, n_qubit, optmtd)
         return SR_tbt
     return res.x[0:5]
 
-def svarr_builder(nqubit): 
-    norb = int(nqubit/2)
+def svarr_builder(n_qubit): 
+    norb = int(n_qubit/2)
     udim = (4*norb**2)
     return np.zeros([5+udim,1])
 
-def tbt2hsarr(tbt, nqubit): 
-    norb = int(nqubit/2)
+def tbt2hsarr(tbt, n_qubit): 
+    norb = int(n_qubit/2)
     udim = (4*norb**2)
-    sindex = Smat_Index(nqubit)
+    sindex = Smat_Index(n_qubit)
     return np.block([1.0*tbt[sindex],-1.0*tbt[sindex]]).reshape(2*udim,1)
 
-def HSmat_builder (nqubit): 
-    norb = int(nqubit/2)
+def HSmat_builder (n_qubit): 
+    norb = int(n_qubit/2)
     udim = (4*norb**2)
     Idim = np.identity(udim)
-    Smat = Smat_builder(nqubit)
+    Smat = Smat_builder(n_qubit)
     return np.block([[Smat,-1.0*Idim],[-1.0*Smat,-1.0*Idim]])
 
-def Symopt_eval (res, tbt, nqubit, optmtd, pout):
+def Symopt_eval (res, tbt, n_qubit, optmtd):
     #NOTE: This routine changes tbt
-    norb = int(nqubit/2)
+    norb = int(n_qubit/2)
     symdim = (4*norb**2)
-    Symmat = Smat_builder(nqubit)
+    Symmat = Smat_builder(n_qubit)
     symopt = res.x[0:5].reshape(5,1)
-    sindex = Smat_Index(nqubit) 
+    sindex = Smat_Index(n_qubit) 
     casred = tbt[sindex].reshape(symdim,1) - np.matmul(Symmat,symopt)
     l1tbt  = np.sum(np.abs(tbt))
     l1sred = np.sum(np.abs(casred))
     tbt[sindex] = (casred).reshape(symdim)
     return tbt, l1tbt, l1sred
 
-def Casimir_param (res, nqubit, optmtd, pout):
+def Casimir_param (res, n_qubit, optmtd):
     #NOTE: This routine changes tbt
-    norb = int(nqubit/2)
+    norb = int(n_qubit/2)
     symdim = (4*norb**2)
-    Symmat = Smat_builder(nqubit)
+    Symmat = Smat_builder(n_qubit)
     symopt = res.x[0:5].reshape(5,1)
-    sindex = Smat_Index(nqubit) 
+    sindex = Smat_Index(n_qubit) 
     casred = tbt[sindex].reshape(symdim,1) - np.matmul(Symmat,symopt)
     l1tbt  = np.sum(np.abs(tbt))
     l1sred = np.sum(np.abs(casred))
     tbt[sindex] = (casred).reshape(symdim)
     return tbt, l1tbt, l1sred
 
-
-def Smat_builder (nqubit): 
-    #Order: Nα, Nβ, Nα², NαNβ, Nβ²
-
+def Smat_builder (n_qubit): 
     #Number of unique non-zero elements of Hsdim
-    norb = int(nqubit/2)
+    norb = int(n_qubit/2)
     ncpl = (norb)*(norb-1)
     udim = (4*norb**2)
     # This routine works with a fixed order for Nα, Nβ, Nα², Nβ², NαNβ 
     Smat = np.zeros([udim, 5])
     # Nα: 
     Smat[0:norb,0] = 1.0
-    #Nβ: 
+    # Nβ: 
     Smat[norb:2*norb,1] = 1.0
-    #Nα²: 
+    # Nα²: 
     Smat[0:norb,2] = 1
     Smat[2*norb:2*norb+ncpl,2] = 1.0
-    #Nβ²: 
+    # Nβ²: 
     Smat[norb:2*norb,3] = 1
     Smat[2*norb+ncpl:2*norb+2*ncpl,3] = 1.0
-
-    #NOTE: how should be the order?  
-
-    #NαNβ: 
+    # NαNβ: 
     Smat[2*norb+2*ncpl:,4] = 0.5
     return  Smat
 
-def Smat_Index (nqubit):
-    norb = int(nqubit/2)
+def Smat_Index (n_qubit):
+    norb = int(n_qubit/2)
     #pdim = (4*norb**2) + (2*norb)
     pdim = (4*norb**2)
 
@@ -588,3 +583,104 @@ def Smat_Index (nqubit):
 
     return Hsim
 
+
+#
+# Qubit-SYMMETRY REDUCTION with Linear-Programming
+#
+def QSR_LinProg (lam, n_qubit, symout=False, optmtd='interior-point'):
+#FUNCTION: Symmetry Reduction via constrained L1-norm minimization in qubit space.
+    svarr = Qsvarr_builder(n_qubit)
+    hsarr = lam2hsarr(lam, n_qubit)
+    HSmat = QHSmat_builder(n_qubit)
+    res = opt.linprog(svarr, A_ub=HSmat, b_ub=hsarr, bounds=(None,None), method=optmtd)
+    symcoeffs = np.zeros(3)
+    symcoeffs, l1Hsymm, l1Hsred = QSymopt_eval (res, lam, n_qubit)
+    if ( symout == True ): 
+        return symcoeffs, l1Hsymm, l1Hsred
+    elif (symout == False): 
+        return l1Hsred 
+
+def QSymopt_eval (res, lam, n_qubit):
+    norb = int(n_qubit/2)
+    symdim = (2*norb**2) - norb
+    Symmat = QSmat_builder(n_qubit)
+    symopt = res.x[0:3].reshape(3,1)
+    sindex = QSmat_Index(n_qubit) 
+
+    Hsymarr = lam[sindex].reshape(symdim,1)
+    Csymarr = np.matmul(Symmat,symopt)
+    l1Hsymm = np.sum(np.abs(Hsymarr))
+    l1Hsred = np.sum(np.abs(Csymarr))
+    return res.x[0:3], l1Hsymm, l1Hsred
+
+
+def Qsvarr_builder(n_qubit): 
+    norb = int(n_qubit/2)
+    udim = (2*norb**2) - norb
+    return np.zeros([3+udim,1])
+
+def lam2hsarr (lam, n_qubit): 
+    norb = int(n_qubit/2)
+    udim = (2*norb**2) - (norb)
+    sindex = QSmat_Index(n_qubit)
+    return np.block([1.0*lam[sindex],-1.0*lam[sindex]]).reshape(2*udim,1)
+
+def QHSmat_builder (n_qubit): 
+    norb = int(n_qubit/2)
+    udim = (2*norb**2) - (norb)
+    Idim = np.identity(udim)
+    Smat = QSmat_builder(n_qubit)
+    return np.block([[Smat,-1.0*Idim],[-1.0*Smat,-1.0*Idim]])
+
+def QSmat_builder (n_qubit): 
+    #Number of unique non-zero elements of Hsdim
+    norb = int(n_qubit/2)
+    ncpl = int(0.5*(norb)*(norb-1)) 
+    udim = (2*norb**2) - norb
+    # This routine works with a fixed order for Nα, Nβ, Nα², Nβ², NαNβ 
+    Smat = np.zeros([udim, 3])
+    # Nα: 
+    # Smat[0:norb,0] = 4.0
+    #Nβ: 
+    # Smat[norb:2*norb,1] = 4.0
+    #Nα²: 
+    Smat[0:ncpl,0] = 4.0
+    #Nβ²: 
+    Smat[ncpl:2*ncpl,1] = 4.0
+    #NαNβ: 
+    Smat[2*ncpl:,2] = 2.0
+    return  Smat
+
+def QSmat_Index (n_qubit):
+    norb = int(n_qubit/2)
+    #pdim = (2*norb**2) - (norb)
+    pdim = (2*norb**2) - (norb)
+    Hsim = (np.zeros(pdim, dtype=np.int64), 
+            np.zeros(pdim, dtype=np.int64))
+
+    korb = 0
+    #Nα²: 
+    for iorb in range(norb):
+    	for jorb in range(iorb+1, norb):
+            Hsim[0][korb] = 2*iorb 
+            Hsim[1][korb] = 2*jorb
+            korb += 1
+    #Nβ²: 
+    for iorb in range(norb):
+        for jorb in range(iorb+1, norb):
+            Hsim[0][korb] = 2*iorb + 1 
+            Hsim[1][korb] = 2*jorb + 1
+            korb += 1
+    #NαNβ: 
+    for iorb in range(norb):
+    	for jorb in range(norb):
+            if( 2*jorb > 2*iorb + 1): 
+                Hsim[0][korb] = 2*iorb + 1 
+                Hsim[1][korb] = 2*jorb
+                korb += 1
+            elif ( 2*iorb + 1 > 2*jorb ): 
+                Hsim[0][korb] = 2*jorb 
+                Hsim[1][korb] = 2*iorb + 1
+                korb += 1
+
+    return Hsim

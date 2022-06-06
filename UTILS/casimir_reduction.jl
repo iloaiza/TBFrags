@@ -226,6 +226,29 @@ function symmetry_linprog_optimization(tbt, spin_orb=true)
 	return tbt_sym, x_vec
 end
 
+function qubit_sym_linprog_optimization(cartan_tbt, n_qubit, spin_orb)
+	# output: coefficients of Naa, Nbb, Nab, l1tbt=before-reduction l1sred=after-reduction
+  q_casimir = cartan_to_casimir(cartan_tbt, spin_orb)
+  l1sred = car2lcu.QSR_LinProg(q_casimir, n_qubit)
+  return l1sred # of.qubit_operator_sparse(q_op)
+end
+
+function cartan_to_casimir(cartan_tbt, spin_orb)
+	#input: cartan polynomial of n_i's
+	#transforms fermionic tbt into (1-2ni)(1-2nj) -> zizj, requires correction to 1-body term
+	tbt_so = tbt_to_so(cartan_tbt, spin_orb) / 4
+	n = size(tbt_so)[1]
+	q_casimir = zeros(typeof(tbt_so[1]),n,n)
+	for i in 1:n
+		for j in 1:n
+			if i != j
+        q_casimir[i,j] += tbt_so[i,i,j,j]
+			end
+		end
+	end
+  return q_casimir
+end
+
 function symmetry_cuadratic_optimization(tbt, spin_orb=true; S2=true, S_arr=false)
 	#finds optimal shift by minimizing fermionic two-body tensor cost of ||tbt - ∑si Si||², with Si symmetries
 	#includes Nα, Nβ, Nα², Nα*Nβ, Nβ², (and S² if S2=true) operators for symmetries

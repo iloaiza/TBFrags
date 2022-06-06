@@ -155,10 +155,9 @@ function cartan_to_qubit_naive_treatment(cartan_tbt, spin_orb)
 	return ΔE
 end
 
-function cartan_to_qubit_l1_treatment(cartan_tbt, spin_orb)
+function cartan_to_qop(cartan_tbt, spin_orb)
 	#input: cartan polynomial of n_i's
 	#transforms fermionic tbt into (1-2ni)(1-2nj) -> zizj, requires correction to 1-body term
-	#output: transforms into ∑λij/4 zi zj and returns sqrt norm
 	q_op = of.QubitOperator.zero()
 	tbt_so = tbt_to_so(cartan_tbt, spin_orb) / 4
 	n = size(tbt_so)[1]
@@ -175,7 +174,14 @@ function cartan_to_qubit_l1_treatment(cartan_tbt, spin_orb)
 			end
 		end
 	end
+  return q_op
+end
 
+function cartan_to_qubit_l1_treatment(cartan_tbt, spin_orb)
+	#input: cartan polynomial of n_i's
+	#transforms fermionic tbt into (1-2ni)(1-2nj) -> zizj, requires correction to 1-body term
+	#output: transforms into ∑λij/4 zi zj and returns sqrt norm
+  q_op = cartan_to_qop(cartan_tbt, spin_orb)
 	q_range = qubit_op_range(q_op, tol=1e-3)
 	ΔE = (q_range[2] - q_range[1])/2
 
@@ -748,6 +754,14 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 		global λV += cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], false)
 	end
 	@show λT, λV, λT+λV
+
+	println("\n\n\n L1-LinProg Optimization in QUBIT-SPACE")
+	global λV_sred = 0.0
+	for i in 1:α_CSA
+    global λV_sred += qubit_sym_linprog_optimization(CARTANS[i,:,:,:,:], n, false)
+	end
+
+  @show λV_sred
 
 	println("\n\n\n Starting df routine...")
 	@time svd_optimized_df(tbt_mo_tup, tol=1e-6, tiny=1e-8)
