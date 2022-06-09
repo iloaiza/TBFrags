@@ -642,11 +642,11 @@ def QSmat_builder (n_qubit):
     #Nβ: 
     # Smat[norb:2*norb,1] = 4.0
     #Nα²: 
-    Smat[0:ncpl,0] = 4.0
+    Smat[0:ncpl,0] = 0.5
     #Nβ²: 
-    Smat[ncpl:2*ncpl,1] = 4.0
+    Smat[ncpl:2*ncpl,1] = 0.5
     #NαNβ: 
-    Smat[2*ncpl:,2] = 2.0
+    Smat[2*ncpl:,2] = 0.5
     return  Smat
 
 def QSmat_Index (n_qubit):
