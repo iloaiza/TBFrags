@@ -145,7 +145,7 @@ function shift_builder(x, S_arr)
 	return shift
 end
 
-function cartan_tbt_purification(tbt, spin_orb=true)
+function cartan_tbt_purification(tbt, spin_orb=true; l2=false)
 	# input: cartan tbt operator (and whether it is in spin-orbitals or orbitals)
 	# output: cartan tbt operator in spin-orbitals with shifted symmetries, and shift constants
 	tbt_so = tbt_to_so(tbt, spin_orb)
@@ -154,10 +154,12 @@ function cartan_tbt_purification(tbt, spin_orb=true)
 
 	S_arr = casimirs_builder(n_qubit, S2=false)
 
-	function cost(x) 
-		shift = shift_builder(x, S_arr)
-		#return cartan_tbt_l1_cost(tbt_so - shift, true)
-		return cartan_tbt_l2_cost(tbt_so - shift, true)
+	function cost(x)
+		if l2
+			return cartan_tbt_l2_cost(tbt_so - shift_builder(x, S_arr), true)
+		else
+			return cartan_tbt_l1_cost(tbt_so - shift_builder(x, S_arr), true)
+		end
 	end
 
 	x0 = zeros(5)
