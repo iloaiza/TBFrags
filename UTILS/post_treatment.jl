@@ -166,8 +166,8 @@ function cartan_to_qop(cartan_tbt, spin_orb)
 	global λVL1 = 0.0
 	for i in 1:n
 		for j in 1:n
-			global λVL1 += abs(tbt_so[i,i,j,j]) / 4
 			if i != j
+				global λVL1 += abs(tbt_so[i,i,j,j]) / 4
 				z_string = "Z$i Z$j"
 				q_op += (tbt_so[i,i,j,j] / 4) * of.QubitOperator(z_string)
 			end
@@ -791,10 +791,14 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	s_vec = zeros(3)
 	@sync @distributed for i in 1:α_CSA
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
+		#=
+		#cartan_so = cartan_tbt_to_triang(cartan_so)
 		sm, l1_orig, l1_red = qubit_sym_linprog_optimization(cartan_so, n_qubit, true)
-		sm /= 4
 		tbt_cartan = cartan_so - shift_builder(sm, TB_Q_SYMS)
+		# =#
+		tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
 		s_vec += sm
+		@show sm
 		λ, Δ = cartan_to_qubit_l1_treatment(tbt_cartan, true)
 		λs_arr[i,:] .= [λ, Δ]
 	end
@@ -813,7 +817,7 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 
 	@show λTp, λVp, λTp+λVp	
 	@show λTpSqrt, λVpSqrt, λTpSqrt+λVpSqrt	
-
+	exit()
 	#=
 	println("\n\n Starting Reflection routine for separated 1 and 2-body terms")
 	CGMFR_NAME = "CGMFR_" * ham_name
@@ -890,7 +894,6 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	@sync @distributed for i in 1:α_SVD
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
 		sm, l1_orig, l1_red = qubit_sym_linprog_optimization(cartan_so, n_qubit, true)
-		sm /= 4
 		tbt_cartan = cartan_so - shift_builder(sm, TB_Q_SYMS)
 		s_vec += sm
 		λ, Δ = cartan_to_qubit_l1_treatment(tbt_cartan, true)
