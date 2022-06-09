@@ -153,6 +153,7 @@ function cartan_tbt_purification(tbt, spin_orb=true; l2=false)
 	n_qubit = size(tbt_so)[1]
 
 	S_arr = casimirs_builder(n_qubit, S2=false)
+	S_arr = S_arr[3:end]
 
 	function cost(x)
 		if l2
@@ -162,7 +163,7 @@ function cartan_tbt_purification(tbt, spin_orb=true; l2=false)
 		end
 	end
 
-	x0 = zeros(5)
+	x0 = zeros(3)
 
 	sol = optimize(cost, x0, BFGS())
 
@@ -232,6 +233,7 @@ function qubit_sym_linprog_optimization(cartan_tbt, n_qubit, spin_orb)
 	# output: coefficients of Naa, Nbb, Nab, l1tbt=before-reduction l1sred=after-reduction
   	q_casimir = cartan_to_casimir(cartan_tbt, spin_orb)
   	coeff_vec, l1_orig, l1_red = car2lcu.QSR_LinProg(q_casimir, n_qubit, true)
+  	#@show l1_orig, l1_red
   	return coeff_vec, l1_orig, l1_red
 end
 
