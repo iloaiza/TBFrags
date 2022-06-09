@@ -155,10 +155,10 @@ function cartan_to_qubit_naive_treatment(cartan_tbt, spin_orb)
 	return ΔE
 end
 
-function cartan_to_qubit_l1_treatment(cartan_tbt, spin_orb)
+function cartan_to_qop(cartan_tbt, spin_orb)
 	#input: cartan polynomial of n_i's
 	#transforms fermionic tbt into (1-2ni)(1-2nj) -> zizj, requires correction to 1-body term
-	#output: transforms into ∑λij/4 zi zj, returns L1 and sqrt norm (should be the same for SVD fragments)
+	#output: transforms into ∑λij/4 zi zj
 	q_op = of.QubitOperator.zero()
 	tbt_so = tbt_to_so(cartan_tbt, spin_orb)
 	n = size(tbt_so)[1]
@@ -174,10 +174,18 @@ function cartan_to_qubit_l1_treatment(cartan_tbt, spin_orb)
 		end
 	end
 
+  	return q_op, λVL1
+end
+
+function cartan_to_qubit_l1_treatment(cartan_tbt, spin_orb)
+	#input: cartan polynomial of n_i's
+	#transforms fermionic tbt into (1-2ni)(1-2nj) -> zizj, requires correction to 1-body term
+	#output: transforms into ∑λij/4 zi zj and returns sqrt norm
+  	q_op, λVL1 = cartan_to_qop(cartan_tbt, spin_orb)
 	q_range = qubit_op_range(q_op, tol=1e-3)
 	ΔE = (q_range[2] - q_range[1])/2
 
-	#λVL1/2 factor using oblivious amplitude amplification
+	#λVL1/2 factor if using oblivious amplitude amplification
 	return λVL1, ΔE
 end
 
@@ -748,6 +756,7 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	# =#
 	n_qubit = 2*size(tbt_mo_tup[1])[1]
 	OB_ARR, TB_ARR = casimirs_builder(n_qubit, one_body=true)
+	TB_Q_SYMS = TB_ARR[3:end]
 
 	println("\n\n Starting CSA routine for separated 1 and 2-body terms")
 	CSA_2_NAME = "CSA_2_" * ham_name 
@@ -779,20 +788,20 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	println("Starting symmetry-after routine for CSA:")
 
 	λs_arr = SharedArray(zeros(α_CSA,2))
-	s_vec = zeros(5)
+	s_vec = zeros(3)
 	@sync @distributed for i in 1:α_CSA
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
-		#@show cartan_to_qubit_l1_treatment(cartan_so, true)
-		tbt_cartan, sm = symmetry_linprog_optimization(cartan_so, true)
+		sm, l1_orig, l1_red = qubit_sym_linprog_optimization(cartan_so, n_qubit, true)
+		sm /= 4
+		tbt_cartan = cartan_so - shift_builder(sm, TB_Q_SYMS)
 		s_vec += sm
 		λ, Δ = cartan_to_qubit_l1_treatment(tbt_cartan, true)
 		λs_arr[i,:] .= [λ, Δ]
-		#@show cartan_to_qubit_l1_treatment(tbt_cartan, true)
 	end
 	λVp = sum(λs_arr[:,1])
 	λVpSqrt = sum(λs_arr[:,2])
 
-	tot_shift = shift_builder(s_vec, TB_ARR)
+	tot_shift = shift_builder(s_vec, TB_Q_SYMS)
 	obt_so = obt_orb_to_so(obt_tilde) + 2*sum([tot_shift[:,:,r,r] for r in 1:n_qubit])
 	ob_sol = ob_L1_optimization(obt_so)
 	λTp = ob_sol.minimum
@@ -876,14 +885,13 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 
 	println("Starting symmetry-after routine for SVD:")
 
-	global λVp = 0.0
-	global λVpSqrt = 0.0
-	s_vec = zeros(5)
 	λs_arr = SharedArray(zeros(α_SVD,2))
-	s_vec = zeros(5)
+	s_vec = zeros(3)
 	@sync @distributed for i in 1:α_SVD
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
-		tbt_cartan, sm = symmetry_linprog_optimization(cartan_so, true)
+		sm, l1_orig, l1_red = qubit_sym_linprog_optimization(cartan_so, n_qubit, true)
+		sm /= 4
+		tbt_cartan = cartan_so - shift_builder(sm, TB_Q_SYMS)
 		s_vec += sm
 		λ, Δ = cartan_to_qubit_l1_treatment(tbt_cartan, true)
 		λs_arr[i,:] .= [λ, Δ]
@@ -891,7 +899,7 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	λVp = sum(λs_arr[:,1])
 	λVpSqrt = sum(λs_arr[:,2])
 
-	tot_shift = shift_builder(s_vec, TB_ARR)
+	tot_shift = shift_builder(s_vec, TB_Q_SYMS)
 	obt_so = obt_orb_to_so(obt_tilde) + 2*sum([tot_shift[:,:,r,r] for r in 1:n_qubit])
 	ob_sol = ob_L1_optimization(obt_so)
 	λTp = ob_sol.minimum
