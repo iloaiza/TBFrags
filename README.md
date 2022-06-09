@@ -37,12 +37,16 @@ Available optimizations (for obtaining decomposition) (parenthesis shows alias f
 
 
 ### FRAGMENT FLAVOURS (S_n's):
+- CSA: builds Cartan sub-algebra two-body polynomials for each fragment
 - CSASD: CSA fragments which include one-body and two-body tensors
 - CGMFR: uses all 10 classes of two-body Cartan reflections
+- CRT: (Cartan Reflection Tuple) same as CGMFR, but separates one-body and two-body terms
+- CR2: Same as CRT, but only includes 2-body part
+- GT: (Google Tuple) same as CRT but for class k=4, corresponds to Google's unitarization ni -> 1-2ni
+- G2: Same as GT, but only includes 2-body part
 - GMFR: only uses 3 initially proposed classes of two-body Cartan reflections
 - UPOL: builds linear combination of n1n2, (1-n1)n2, n1(1-n2), and (1-n1)(1-n2) with complex phases
 - O3: builds operators with 3 eigenvalues ({-1,0,1}+const) by using p1+p2 and p1-p2 for p1, p2 in all 10 projector classes
-- CSA: builds Cartan sub-algebra two-body polynomials for each fragment
 - iCSA: like CSA, but also allows complex generators for anti-hermitian components (e.g. in1n2)
 - U11: builds unitary operator from linear phases combination of projectors (11 classes, class 11 = UPOL)
 - TBTON: normalized 2-body, 2-orbital polynomial based on real unitary phases (U+U') for 11th class (i.e. UPOL)

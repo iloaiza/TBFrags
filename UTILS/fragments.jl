@@ -196,6 +196,121 @@ function cgmfr_tbt_builder(k, n)
 	return tbt
 end
 
+function crt_obt_builder(k, n)
+	obt = zeros(Float64,n,n)
+
+	if k==1
+		obt[1,1] = -2
+	elseif k==3
+		obt[1,1] = -2
+	elseif k==4
+		obt[1,1] = -2
+		obt[2,2] = -2
+	elseif k==5
+		obt[1,1] = -2
+		obt[2,2] = -2
+	elseif k==6
+		obt[1,1] = -2
+	elseif k==7
+		obt[1,1] = -2
+	elseif k==8
+		obt[1,1] = -2
+		obt[2,2] = -2
+	elseif k==9
+		obt[1,1] = -2
+		obt[2,2] = -2
+		obt[3,3] = -2
+	elseif k==10
+		obt[1,1] = -2
+		obt[2,2] = -2
+	end
+
+	return obt
+end
+
+function crt_tbt_builder(k, n)
+	tbt = zeros(Float64,n,n,n,n)
+
+	if k==2
+		tbt[1,1,2,2] = -1
+		tbt[2,2,1,1] = -1
+	elseif k==3
+		tbt[1,1,2,2] = 1
+		tbt[2,2,1,1] = 1
+	elseif k==4
+		tbt[1,1,2,2] = 2
+		tbt[2,2,1,1] = 2
+	elseif k==5
+		tbt[1,1,2,2] = 1
+		tbt[2,2,1,1] = 1
+	elseif k==6
+		tbt[3,3,2,2] = -1
+		tbt[2,2,3,3] = -1
+		tbt[1,1,3,3] = 1
+		tbt[3,3,1,1] = 1
+	elseif k==7
+		tbt[3,3,2,2] = -1
+		tbt[2,2,3,3] = -1
+		tbt[1,1,3,3] = 1
+		tbt[3,3,1,1] = 1
+		tbt[1,1,2,2] = 1
+		tbt[2,2,1,1] = 1
+	elseif k==8
+		tbt[1,1,3,3] = 1
+		tbt[3,3,1,1] = 1
+		tbt[1,1,2,2] = 1
+		tbt[2,2,1,1] = 1
+	elseif k==9
+		tbt[1,1,3,3] = 1
+		tbt[3,3,1,1] = 1
+		tbt[1,1,2,2] = 1
+		tbt[2,2,1,1] = 1
+		tbt[2,2,3,3] = 1
+		tbt[3,3,2,2] = 1
+	elseif k==10
+		tbt[3,3,4,4] = -1
+		tbt[4,4,3,3] = -1
+		tbt[1,1,3,3] = 1
+		tbt[3,3,1,1] = 1
+		tbt[2,2,4,4] = 1
+		tbt[4,4,2,2] = 1
+		tbt[1,1,2,2] = 1
+		tbt[2,2,1,1] = 1
+	end
+
+	return tbt
+end
+
+function crt_tup_builder(k :: Int64, n)
+	if k > 10
+		error("Trying to build CRT class with class k=$k")
+	end
+
+	return crt_obt_builder(k, n), crt_tbt_builder(k, n)
+end
+
+function gt_obt_builder(n)
+	obt = zeros(Float64,n,n)
+
+	obt[1,1] = -2
+	obt[2,2] = -2
+	
+	return obt
+end
+
+function gt_tbt_builder(n)
+	tbt = zeros(Float64,n,n,n,n)
+
+	tbt[1,1,2,2] = 2
+	tbt[2,2,1,1] = 2
+
+	return tbt
+end
+
+function gt_tup_builder(n)
+	return gt_obt_builder(n), gt_tbt_builder(n)
+end
+
 function gmfr_tbt_builder(k, n)
 	tbt = zeros(Float64,n,n,n,n)
 
@@ -395,6 +510,14 @@ function number_of_classes(flavour = META.ff :: FRAG_FLAVOUR)
 		return 10
 	elseif typeof(flavour) == CSA
 		return 1
+	elseif typeof(flavour) == CRT
+		return 10
+	elseif typeof(flavour) == CR2
+		return 10
+	elseif typeof(flavour) == GT
+		return 1
+	elseif typeof(flavour) == G2
+		return 1
 	elseif typeof(flavour) == CSASD
 		return 1
 	elseif typeof(flavour) == iCSA
@@ -449,6 +572,30 @@ function fragment_to_normalized_cartan_tbt(frag::fragment; frag_flavour = META.f
 		else
 			return obt, tbt
 		end
+	elseif typeof(frag_flavour) == CRT
+		if n < 4
+			println("ERROR: Trying to do CRT, requiring 4 orbitals, while number of used orbitals is $n")
+			if frag.spin_orb == false
+				println("Try using spin-orbitals instead of normalized orbitals by setting spin_orb=true")
+			end
+		end
+		obt, tbt = crt_tup_builder(frag.class, n)
+		if frag.spin_orb == false
+			return obt ./ 2, tbt ./ 4
+		else
+			return obt, tbt
+		end
+	elseif typeof(frag_flavour) == CR2
+		tbt = crt_tbt_builder(frag.class, n)
+	elseif typeof(frag_flavour) == GT
+		obt, tbt = gt_tup_builder(n)
+		if frag.spin_orb == false
+			return obt ./ 2, tbt ./ 4
+		else
+			return obt, tbt
+		end
+	elseif typeof(frag_flavour) == G2
+		tbt = gt_tbt_builder(n)
 	elseif typeof(frag_flavour) == CSA
 		tbt = csa_tbt_builder(frag.cn, n)
 	elseif typeof(frag_flavour) == iCSA
@@ -530,7 +677,7 @@ function CSA_family(frag_flavour :: FRAG_FLAVOUR)
 end
 
 function singles_family(frag_flavour :: FRAG_FLAVOUR)
-	SINGLES_ARR = [CSASD()]
+	SINGLES_ARR = [CSASD(), CRT(), GT()]
 
 	if frag_flavour in SINGLES_ARR
 		return true
@@ -538,6 +685,9 @@ function singles_family(frag_flavour :: FRAG_FLAVOUR)
 		return false
 	end
 end
+
+import Base.*
+*(c :: Number, A :: Tuple) = (c*A[1], c*A[2])
 
 function fragment_to_tbt(frag::fragment; frag_flavour = META.ff, u_flavour = META.uf)
 	#CSASD returns obt, tbt
@@ -552,6 +702,14 @@ end
 function frag_coeff_length(n, frag_flavour = META.ff)
 	# returns length(frag.cn)
 	if typeof(frag_flavour) == CGMFR
+		return 1
+	elseif typeof(frag_flavour) == CR2
+		return 1
+	elseif typeof(frag_flavour) == CRT
+		return 1
+	elseif typeof(frag_flavour) == G2
+		return 1
+	elseif typeof(frag_flavour) == GT
 		return 1
 	elseif typeof(frag_flavour) == CSA
 		return Int(n*(n+1)/2)
@@ -592,6 +750,14 @@ function frag_num_zeros(n, frag_flavour = META.ff)
 	elseif typeof(frag_flavour) == iCSA
 		return Int(n*(n+1))
 	elseif typeof(frag_flavour) == GMFR
+		return 1
+	elseif typeof(frag_flavour) == CR2
+		return 1
+	elseif typeof(frag_flavour) == CRT
+		return 1
+	elseif typeof(frag_flavour) == G2
+		return 1
+	elseif typeof(frag_flavour) == GT
 		return 1
 	elseif typeof(frag_flavour) == UPOL
 		return 1
