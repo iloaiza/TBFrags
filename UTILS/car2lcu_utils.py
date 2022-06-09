@@ -16,8 +16,7 @@ def TBT_to_L1opt_LCU (tbt, norb, solmtd='l1ip', pout=True):
                'l1ip'  :'interior-point',
                'l1hi'  :'highs',
                'l1hds' :'highs-ds',
-               'l1hpm' :'highs-ipm',
-               'l1ip'  :'interior-point'}
+               'l1hpm' :'highs-ipm'}
 
     if (solmtd == 'l1ip' or 'l1rs' or 'l1hi' or 'l1hds' or 'l1hpm'): 
         resout = L1opt_LCU (tbt, norb, solvers[solmtd], pout)
@@ -31,8 +30,7 @@ def OBTTBT_to_L1opt_LCU (obt, tbt, norb, solmtd='l1ip', pout=True):
                'l1ip'  :'interior-point',
                'l1hi'  :'highs',
                'l1hds' :'highs-ds',
-               'l1hpm' :'highs-ipm',
-               'l1ip'  :'interior-point'}
+               'l1hpm' :'highs-ipm'}
 
     if (solmtd == 'l1ip' or 'l1rs' or 'l1hi' or 'l1hds' or 'l1hpm'): 
         resout = obttbt_L1opt_LCU (obt, tbt, norb, solvers[solmtd], pout)
