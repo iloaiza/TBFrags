@@ -108,3 +108,16 @@ function tbt_to_so(tbt :: Tuple, spin_orb)
         return tbt[2] + obt_to_tbt(tbt[1])
     end
 end
+
+function tbt_diag(tbt)
+    n = size(tbt)[1]
+
+    tbt_diag = 0 .* tbt
+    for i in 1:n
+        for j in 1:n
+            tbt_diag[i,i,j,j] = tbt[i,i,j,j]
+        end
+    end
+
+    return tbt_diag
+end
