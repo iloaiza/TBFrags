@@ -168,7 +168,7 @@ function cartan_to_qop(cartan_tbt, spin_orb)
 		for j in 1:n
 			if i != j
 				global λVL1 += abs(tbt_so[i,i,j,j]) / 4
-				z_string = "Z$i Z$j"
+				z_string = "Z$(i-1) Z$(j-1)"
 				q_op += (tbt_so[i,i,j,j] / 4) * of.QubitOperator(z_string)
 			end
 		end
