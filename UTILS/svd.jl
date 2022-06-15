@@ -1,4 +1,4 @@
-function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=true, tiny=SVD_tiny, ret_op = true)
+function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=true, tiny=SVD_tiny, ret_op = false, ret_us = false)
 	println("Starting SVD routine")
 	n = size(tbt)[1]
 	N = n^2
@@ -44,6 +44,9 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=true, tiny=SVD_tiny, ret_op = 
     TBTS = SharedArray(zeros(Complex{Float64}, num_ops, n, n, n, n))
     CARTAN_TBTS = SharedArray(zeros(Complex{Float64}, num_ops, n, n, n, n))
     #U_MATS = SharedArray(zeros(num_ops, n, n, n, n))
+    if ret_us
+    	U_ARR = SharedArray(zeros(num_ops, n, n))
+    end
     @sync @distributed for i in 1:num_ops
     	if FLAGS[i] == 0
 	    	ωl, Ul = eigen(L_mats[i])
@@ -94,6 +97,10 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=true, tiny=SVD_tiny, ret_op = 
 		    TBTS[i,:,:,:,:] = tbt_svd
 		    CARTAN_TBTS[i,:,:,:,:] = tbt_svd_CSA
 		end
+
+		if ret_us
+			U_ARR[i,:,:] = Ul
+		end
 	end
 
 	println("Finished SVD routine")
@@ -111,15 +118,21 @@ function tbt_svd(tbt :: Array; tol=1e-6, spin_orb=true, tiny=SVD_tiny, ret_op = 
 		println("SVD sanity checked")
 	end
 	# =#
-	if ret_op == false
+	if ret_op == false && ret_us == false
 		return CARTAN_TBTS, TBTS
+	elseif ret_us == true && ret_op == false
+		return CARTAN_TBTS, TBTS, U_ARR
 	else
 	    L_ops = []
 	    for i in 1:length(L_mats)
 	    	op_1d = obt_to_ferm(L_mats[i], spin_orb)
 	    	push!(L_ops, Λ[i] * op_1d * op_1d)
 	    end
-		return CARTAN_TBTS, TBTS, sum(L_ops)
+	    if ret_us == false
+			return CARTAN_TBTS, TBTS, sum(L_ops)
+		else
+			return CARTAN_TBTS, TBTS, sum(L_ops), U_ARR
+		end
 	end
 end
 
