@@ -720,6 +720,32 @@ function ob_L1_optimization(obt_so)
 	return optimize(cost, t0, BFGS())
 end
 
+function SHIFT_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
+	println("Starting qubit treatment...")
+	# =
+	println("Performing fermion to qubit mapping:")
+	@time H_full_q = qubit_transform(h_ferm, "jw")
+	#@show H_full_q
+	println("\n\n\n Qubit treatment of Hamiltonian:")
+	qubit_treatment(H_full_q)
+
+	n_qubit = 2*size(tbt_mo_tup[1])[1]
+	OB_ARR, TB_ARR = casimirs_builder(n_qubit, one_body=true)
+	TB_Q_SYMS = TB_ARR[3:end]
+
+	println("\n\n\n			STARTING SYMMETRY OPTIMIZATIONS ROUTINE: BEFORE")
+	println("Calculations for 1+2 term")
+	tbt_so = tbt_to_so(tbt_mo_tup, false)
+	@time tbt_ham_opt, x_opt = symmetry_linprog_optimization(tbt_so, true)
+	shift_op = tbt_to_ferm(tbt_ham_opt, true)
+	shift_range = op_range(shift_op)
+	@show (shift_range[2] - shift_range[1])/2
+	println("Performing fermion to qubit mapping:")
+	@time H_full_q = qubit_transform(shift_op, "jw")
+	println("\n\n\n Qubit treatment of Hamiltonian:")
+	qubit_treatment(H_full_q)
+end
+
 function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	println("Starting qubit treatment...")
 	# =
@@ -797,6 +823,7 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 		tbt_cartan = cartan_so - shift_builder(sm, TB_Q_SYMS)
 		# =#
 		tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
+		#tbt_cartan, sm = two_body_symmetry_cuadratic_optimization(cartan_so, true)
 		s_vec += sm
 		@show sm
 		λ, Δ = cartan_to_qubit_l1_treatment(tbt_cartan, true)
@@ -816,8 +843,12 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	λTpSqrt = 0.5 * (sum(mu_pos) - sum(mu_neg))
 
 	@show λTp, λVp, λTp+λVp	
-	@show λTpSqrt, λVpSqrt, λTpSqrt+λVpSqrt	
-	exit()
+	@show λTpSqrt, λVpSqrt, λTpSqrt+λVpSqrt
+	obt_shift = shift_builder(ob_sol.minimizer, OB_ARR)
+	shift_op = of_simplify(h_ferm - tbt_to_ferm(tot_shift, true) - obt_to_ferm(obt_shift, true))
+	shift_range = op_range(shift_op)
+	@show (shift_range[2] - shift_range[1])/2
+	
 	#=
 	println("\n\n Starting Reflection routine for separated 1 and 2-body terms")
 	CGMFR_NAME = "CGMFR_" * ham_name
@@ -893,8 +924,10 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	s_vec = zeros(3)
 	@sync @distributed for i in 1:α_SVD
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
-		sm, l1_orig, l1_red = qubit_sym_linprog_optimization(cartan_so, n_qubit, true)
-		tbt_cartan = cartan_so - shift_builder(sm, TB_Q_SYMS)
+		#sm, l1_orig, l1_red = qubit_sym_linprog_optimization(cartan_so, n_qubit, true)
+		#tbt_cartan = cartan_so - shift_builder(sm, TB_Q_SYMS)
+		tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
+		#tbt_cartan, sm = two_body_symmetry_cuadratic_optimization(cartan_so, true)
 		s_vec += sm
 		λ, Δ = cartan_to_qubit_l1_treatment(tbt_cartan, true)
 		λs_arr[i,:] .= [λ, Δ]
@@ -914,8 +947,11 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 
 	@show λTp, λVp, λTp+λVp
 	@show λTpSqrt, λVpSqrt, λTpSqrt+λVpSqrt
-	exit()
-
+	obt_shift = shift_builder(ob_sol.minimizer, OB_ARR)
+	shift_op = of_simplify(h_ferm - tbt_to_ferm(tot_shift, true) - obt_to_ferm(obt_shift, true))
+	shift_range = op_range(shift_op)
+	@show (shift_range[2] - shift_range[1])/2
+	
 	#=
 	ob_shift = shift_builder(ob_sol.minimizer, OB_ARR)
 	tb_shift = shift_builder(s_vec, TB_ARR)
@@ -928,9 +964,9 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	@show (tot_range[2] - tot_range[1])/2
 	# =#
 
-	exit()
 	# =#
 
+	#=
 	println("\n\n\n			Starting SVD routine for combined 1+2e terms with Google's grouping technique:")
 	tbt_so = tbt_to_so(tbt_mo_tup, false)
 	CARTANS, TBTS = tbt_svd(tbt_so, tol=SVD_tol, spin_orb=true, ret_op=false)
@@ -953,7 +989,8 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	end
 	@show λT, λV, λT+λV
 	@show λVsqrt, λT+λVsqrt
-
+	
+	# =#
 	#=
 	println("\n\n\n			Starting CSA routine for combined 1+2e terms with Google's grouping technique:")
 	tbt_so = tbt_to_so(tbt_mo_tup, false)
@@ -989,7 +1026,21 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 
 	println("\n\n\n			STARTING SYMMETRY OPTIMIZATIONS ROUTINE: BEFORE")
 	println("Calculations for 1+2 term")
+	tbt_so = tbt_to_so(tbt_mo_tup, false)
 	@time tbt_ham_opt, x_opt = symmetry_linprog_optimization(tbt_so, true)
+	@show x_opt
+	shift_op = tbt_to_ferm(tbt_ham_opt, true)
+	shift_range = op_range(shift_op)
+	@show (shift_range[2] - shift_range[1])/2
+	println("Performing fermion to qubit mapping:")
+	@time H_full_q = qubit_transform(shift_op, "jw")
+	println("\n\n\n Qubit treatment of Hamiltonian:")
+	qubit_treatment(H_full_q)
+
+	return 0
+
+
+
 	CARTANS, TBTS = tbt_svd(tbt_ham_opt, tol=SVD_tol, spin_orb=true, ret_op=false)
 	α_SVD = size(CARTANS)[1]
 
@@ -1082,4 +1133,75 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	println("\n\n\n Starting optimized SVD routine for 1+2 body terms with cutoff tolerance $SVD_tol:")
 	@time svd_optimized_so(tbt_so, tol=SVD_tol)
 	# =#
+end
+
+function op_treatment(OP) #FermionOperator
+	r = op_range(OP)
+	@show (r[2] - r[1])/2
+	println("Performing fermion to qubit mapping:")
+	@time H_full_q = qubit_transform(OP, "jw")
+	println("\n\n\n Qubit treatment of Hamiltonian:")
+	qubit_treatment(H_full_q)
+end
+
+function MAJORANA_SHIFTED_TREATMENT(tbt_mo_tup, reps=10)
+	n = size(tbt_mo_tup[1])[1]
+	S_arr  = casimirs_builder(2n, S2=false)
+	
+	println("Finding shift...")
+	tbt_so = tbt_to_so(tbt_mo_tup, false)
+	@time tbt_ham_opt, x_opt = symmetry_linprog_optimization(tbt_so, true)
+	@show x_opt
+
+	shift_op = tbt_to_ferm(tbt_ham_opt, true)
+	op_treatment(shift_op)
+	
+
+	println("\n\n\n\n\n##################################\n
+		Starting Majorana treatment for full 5-dim shift:")
+	shift_vec = [x_opt[3], x_opt[5]]
+	@time tbt_rot_tup = post_shift_majorana_optimization(tbt_mo_tup, shift_vec, reps)
+	shift_tbt = shift_builder(x_opt, S_arr)
+	shift_op = tbt_to_ferm(tbt_rot_tup, false) - tbt_to_ferm(shift_tbt, true)
+	println("\n####\n
+		Starting full shift treatment...")
+	op_treatment(shift_op)
+
+	shift_tbt2 = sum(x_opt[3:5] .* S_arr[3:5])
+	shift_op = tbt_to_ferm(tbt_rot_tup, false) - tbt_to_ferm(shift_tbt, true)
+	println("\n####\n
+		Starting 2-body shift treatment...")
+	op_treatment(shift_op)
+
+	println("\n\n\n\n\n##################################\n
+		Starting Majorana treatment for Cartan 2-dim shift:")
+	tbt_shift, s_vec = cartan_tbt_purification(tbt_mo_tup[2], false)
+	@show s_vec
+	shift_vec = [s_vec[1], s_vec[3]]
+	@time tbt_rot_tup = post_shift_majorana_optimization(tbt_mo_tup, shift_vec, reps)
+	shift_tbt = sum(s_vec .* S_arr[3:end])
+	shift_op = tbt_to_ferm(tbt_rot_tup, false) - tbt_to_ferm(shift_tbt, true)
+	op_treatment(shift_op)
+	ham_shift = tbt_to_ferm(tbt_mo_tup, false) - tbt_to_ferm(shift_tbt, true)
+	op_treatment(ham_shift)
+
+	println("\n\n\n\n\n##################################\n
+		Starting Majorana treatment for full l2 norm shift:")
+	s_l2 = cholesky_symmetry_l2_optimization(tbt_mo_tup[2])
+	@show s_l2
+	shift_vec = [s_l2, s_l2]
+	@time tbt_rot_tup = post_shift_majorana_optimization(tbt_mo_tup, shift_vec, reps)
+	shift_tbt = s_l2 * sum(S_arr[3:end])
+	shift_op = tbt_to_ferm(tbt_rot_tup, false) - tbt_to_ferm(shift_tbt, true)
+	op_treatment(shift_op)
+
+	println("\n\n\n\n\n##################################\n
+		Starting Majorana treatment for full l1 norm shift:")
+	s_l1 = cholesky_symmetry_l1_optimization(tbt_mo_tup[2])
+	@show s_l1
+	shift_vec = [s_l1, s_l1]
+	@time tbt_rot_tup = post_shift_majorana_optimization(tbt_mo_tup, shift_vec, reps)
+	shift_tbt = s_l1 * sum(S_arr[3:end])
+	shift_op = tbt_to_ferm(tbt_rot_tup, false) - tbt_to_ferm(shift_tbt, true)
+	op_treatment(shift_op)
 end

@@ -121,3 +121,25 @@ function tbt_diag(tbt)
 
     return tbt_diag
 end
+
+function obt_remover(tbt_so)
+    #removes one-body operator from two-body tensor
+    CARTANS, TBTS, U_ARR = tbt_svd(tbt_so, ret_us=true)
+    tbt_tot = copy(tbt_so)
+    n = size(tbt_so)[1]
+    n_frags = size(CARTANS)[1]
+    obt_tot = zeros(n,n)
+
+    for i in 1:n_frags
+        tbt_temp = zeros(n,n,n,n)
+        obt_temp = zeros(n,n)
+        for j in 1:n
+            tbt_temp[j,j,j,j] = CARTANS[i,j,j,j,j]
+            obt_temp[j,j] = CARTANS[i,j,j,j,j]
+        end
+        tbt_tot -= unitary_cartan_rotation_from_matrix(U_ARR[i,:,:], tbt_temp)
+        @einsum obt_tot[a,b] += U_ARR[i,a,l] * U_ARR[i,b,l] * obt_temp[l,l]
+    end
+
+    return tbt_tot, obt_tot
+end
