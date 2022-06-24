@@ -159,7 +159,7 @@ function cartan_tbt_purification(tbt, spin_orb=true; l2=false)
 		if l2
 			return cartan_tbt_l2_cost(tbt_so - shift_builder(x, S_arr), true)
 		else
-			return cartan_tbt_l1_cost(tbt_so - shift_builder(x, S_arr), true)
+			return cartan_so_tbt_l1_cost(tbt_so - shift_builder(x, S_arr))
 		end
 	end
 
@@ -251,6 +251,42 @@ function cartan_to_casimir(cartan_tbt, spin_orb)
 		end
 	end
   return q_casimir
+end
+
+function two_body_symmetry_cuadratic_optimization(tbt, spin_orb=true)
+	#finds optimal shift by minimizing fermionic two-body tensor cost of ||tbt - ∑si Si||², with Si symmetries
+	#includes Nα², Nβ², Nα*Nβ operators for symmetries
+	#returns tbt - ∑si Si and si vector
+
+	tbt_so = tbt_to_so(tbt, spin_orb)
+	n_qubit = size(tbt_so)[1]
+
+	S_arr = casimirs_builder(n_qubit)
+	S_arr = S_arr[3:end]
+
+	s_len = length(S_arr)
+
+	A_mat = zeros(s_len,s_len)
+	v_vec = zeros(s_len)
+
+	for i in 1:s_len
+		v_vec[i] = sum(tbt_so .* S_arr[i])
+	end
+
+	for i in 1:s_len
+		for j in i:s_len
+			A_mat[i,j] = sum(S_arr[i] .* S_arr[j])
+			A_mat[j,i] = A_mat[i,j]
+		end
+	end
+
+	A_inv = inv(A_mat)
+
+	x_vec = A_inv * v_vec
+
+	tbt_sym = tbt_so - shift_builder(x_vec, S_arr)
+
+	return tbt_sym, x_vec
 end
 
 function symmetry_cuadratic_optimization(tbt, spin_orb=true; S2=true, S_arr=false)
@@ -370,4 +406,40 @@ function orbital_mean_field_symmetry_reduction(tbt :: Tuple, spin_orb; u_flavour
 	return tbt_sym, x_vec, sol.minimizer
 end
 
+function cholesky_symmetry_l2_optimization(tbt_mo :: Array)
+	CARTANS, TBTS = tbt_svd(tbt_mo, spin_orb=false)
+	n = size(TBTS)[2]
+	M = size(CARTANS)[1]
 
+	s = sum(CARTANS) / (M*n*n)
+
+	return s
+end
+
+function cholesky_symmetry_l1_optimization(tbt_mo :: Array)
+	CARTANS, TBTS = tbt_svd(tbt_mo, spin_orb=false)
+	n = size(TBTS)[2]
+	M = size(CARTANS)[1]
+
+	tot_lambdas = M*n*n
+	lambdas_arr = zeros(tot_lambdas)
+	idx = 0
+	for m in 1:M
+		for i in 1:n
+			for j in 1:n
+				idx += 1
+				lambdas_arr[idx] = CARTANS[m,i,i,j,j]
+			end
+		end
+	end
+
+	sort!(lambdas_arr)
+	if iseven(tot_lambdas)
+		i = Int(tot_lambdas/2)
+		s = (lambdas_arr[i] + lambdas_arr[i+1])/2
+	else
+		s = lambdas_arr[i]
+	end
+
+	return s
+end
