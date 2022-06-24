@@ -21,20 +21,40 @@ function cartan_obt_l1_cost(obt :: Array, spin_orb=true)
 	end
 end
 
-function cartan_tbt_l1_cost(tbt :: Array, spin_orb=true)
+function cartan_so_tbt_l1_cost(tbt :: Array)
+	#find tbt cost using np*nq -> (1-2np)(1-2nq) unitarization
+	#requires spin-orbitals
 	n=size(tbt)[1]
 
 	global l1_cost = 0.0
 	for i in 1:n
-		for j in 1:n
+		for j in i+1:n
 			global l1_cost += abs(tbt[i,i,j,j])
+			global l1_cost += abs(tbt[j,j,i,i])
+		end
+	end
+
+	l1_cost
+end
+
+
+function cartan_tbt_l1_cost(tbt :: Array, spin_orb=true)
+	n=size(tbt)[1]
+
+	global l1_cost = 0.0
+	global diag_cost = 0.0
+	for i in 1:n
+		global diag_cost += abs(tbt[i,i,i,i])
+		for j in i+1:n
+			global l1_cost += abs(tbt[i,i,j,j])
+			global l1_cost += abs(tbt[j,j,i,i])
 		end
 	end
 
 	if spin_orb
 		return l1_cost
 	else
-		return 4*l1_cost
+		return 4*l1_cost - 2*diag_cost
 	end
 end
 
@@ -146,6 +166,10 @@ end
 
 function tbt_cost(tbt :: Tuple, target :: Tuple)
 	return SD_cost(tbt[1], tbt[2], target[1], target[2])
+end
+
+function tbt_cost(tbt)
+	return tbt_cost(0, tbt)
 end
 
 function fragment_cost(frag, target; frag_flavour=META.ff, u_flavour=META.uf)
