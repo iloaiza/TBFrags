@@ -34,7 +34,7 @@ function cartan_so_tbt_l1_cost(tbt :: Array)
 		end
 	end
 
-	l1_cost
+	return l1_cost
 end
 
 
