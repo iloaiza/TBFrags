@@ -819,22 +819,25 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
 		# =
 		#cartan_so = cartan_tbt_to_triang(cartan_so)
-		println("LINPROG ROUTINE...")
+		println("LINPROG ROUTINE for fragment=",i)
+
+		println("original L1:")
+		@show cartan_so_tbt_l1_cost(cartan_so)/ 4.0
 		sm, l1_orig, l1_red = qubit_sym_linprog_optimization(cartan_so, n_qubit, true)
-		@show sm, l1_orig, l1_red
 		tbt_cartan = cartan_so - shift_builder(sm, TB_Q_SYMS)
 		println("optimized L1:")
-		@show cartan_so_tbt_l1_cost(tbt_cartan)
-		# =#
-		tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
-		#tbt_cartan, sm = two_body_symmetry_cuadratic_optimization(cartan_so, true)
+		@show sm, l1_orig, l1_red
+		@show cartan_so_tbt_l1_cost(tbt_cartan) / 4.0
 		s_vec += sm
-		println("NAIVE ROUTINE...")
-		println("original L1:")
-		@show cartan_so_tbt_l1_cost(cartan_so)/4
-		println("optimized L1:")
-		@show cartan_so_tbt_l1_cost(tbt_cartan)/4
-		@show sm
+		# = #
+		# println("SQRPROG ROUTINE...")
+		# tbt_so = cartan_tbt_purification(cartan_so, true)
+		# tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
+		#tbt_cartan, sm = two_body_symmetry_cuadratic_optimization(cartan_so, true)
+		#  println("NAIVE ROUTINE...")
+		#  println("optimized L1:")
+		#  @show cartan_so_tbt_l1_cost(tbt_cartan)/4
+		#  @show sm
 		λ, Δ = cartan_to_qubit_l1_treatment(tbt_cartan, true)
 		λs_arr[i,:] .= [λ, Δ]
 	end

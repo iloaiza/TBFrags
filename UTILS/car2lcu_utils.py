@@ -580,37 +580,34 @@ def Smat_Index (n_qubit):
             korb += 1
 
     return Hsim
-
-
 #
 # Qubit-SYMMETRY REDUCTION with Linear-Programming
 #
-def QSR_LinProg (lam, n_qubit, symout=False, optmtd='interior-point'):
+#def QSR_LinProg (lam, n_qubit, symout=False, optmtd='interior-point'):
+def QSR_LinProg (lam, n_qubit, symout=False, optmtd='simplex'):
 #FUNCTION: Symmetry Reduction via constrained L1-norm minimization in qubit space.
     svarr = Qsvarr_builder(n_qubit)
     hsarr = lam2hsarr(lam, n_qubit)
     HSmat = QHSmat_builder(n_qubit)
     res = opt.linprog(svarr, A_ub=HSmat, b_ub=hsarr, bounds=(None,None), method=optmtd)
-    symcoeffs = np.zeros(3)
-    symcoeffs, l1Hsymm, l1Hsred = QSymopt_eval (res, lam, n_qubit)
+    sm = np.zeros(3)
+    sm, l1_orig, l1_red = QSymopt_eval (res.x[0:3], lam, n_qubit)
     if ( symout == True ): 
-        return symcoeffs, l1Hsymm, l1Hsred
+        return sm, l1_orig, l1_red
     elif (symout == False): 
-        return l1Hsred 
+        return sm
 
-def QSymopt_eval (res, lam, n_qubit):
+def QSymopt_eval(sm, lam, n_qubit):
     norb = int(n_qubit/2)
     symdim = (2*norb**2) - norb
     Symmat = QSmat_builder(n_qubit)
-    symopt = res.x[0:3].reshape(3,1)
-    sindex = QSmat_Index(n_qubit) 
-
-    Hsymarr = lam[sindex].reshape(symdim,1)
+    symopt = sm.reshape(3,1)
     Csymarr = np.matmul(Symmat,symopt)
-    l1Hsymm = np.sum(np.abs(Hsymarr))
-    l1Hsred = np.sum(np.abs(Csymarr))
-    return res.x[0:3], l1Hsymm, l1Hsred
-
+    sindex = QSmat_Index(n_qubit) 
+    Hsymarr = lam[sindex].reshape(symdim,1)
+    l1_orig = np.sum(np.abs(Hsymarr)) / 2.0
+    l1_red = np.sum(np.abs(Hsymarr-Csymarr)) / 2.0
+    return sm, l1_orig, l1_red
 
 def Qsvarr_builder(n_qubit): 
     norb = int(n_qubit/2)
@@ -638,28 +635,28 @@ def QSmat_builder (n_qubit):
     # This routine works with a fixed order for Nα, Nβ, Nα², Nβ², NαNβ 
     Smat = np.zeros([udim, 3])
     # Nα: 
-    # Smat[0:norb,0] = 4.0
+    # Smat[0:norb,0] = 1.0
     #Nβ: 
-    # Smat[norb:2*norb,1] = 4.0
+    # Smat[norb:2*norb,1] = 1.0
     #Nα²: 
-    Smat[0:ncpl,0] = 0.5
+    Smat[0:ncpl,0] = 1.0
     #Nβ²: 
-    Smat[ncpl:2*ncpl,1] = 0.5
+    Smat[ncpl:2*ncpl,1] = 1.0
     #NαNβ: 
     Smat[2*ncpl:,2] = 0.5
-    return  Smat
+
+    return Smat
 
 def QSmat_Index (n_qubit):
     norb = int(n_qubit/2)
     #pdim = (2*norb**2) - (norb)
     pdim = (2*norb**2) - (norb)
-    Hsim = (np.zeros(pdim, dtype=np.int64), 
+    Hsim = (np.zeros(pdim, dtype=np.int64),
             np.zeros(pdim, dtype=np.int64))
-
     korb = 0
-    #Nα²: 
+    #Nα²:
     for iorb in range(norb):
-    	for jorb in range(iorb+1, norb):
+        for jorb in range(iorb+1, norb):
             Hsim[0][korb] = 2*iorb 
             Hsim[1][korb] = 2*jorb
             korb += 1

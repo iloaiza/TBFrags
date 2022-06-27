@@ -232,6 +232,7 @@ end
 function qubit_sym_linprog_optimization(cartan_tbt, n_qubit, spin_orb)
 	# output: coefficients of Naa, Nbb, Nab, l1tbt=before-reduction l1sred=after-reduction
   	q_casimir = cartan_to_casimir(cartan_tbt, spin_orb)
+
   	coeff_vec, l1_orig, l1_red = car2lcu.QSR_LinProg(q_casimir, n_qubit, true)
   	#@show l1_orig, l1_red
   	return coeff_vec, l1_orig, l1_red
@@ -239,8 +240,10 @@ end
 
 function cartan_to_casimir(cartan_tbt, spin_orb)
 	#input: cartan polynomial of n_i's
-	#transforms fermionic tbt into (1-2ni)(1-2nj) -> zizj, requires correction to 1-body term
-	tbt_so = tbt_to_so(cartan_tbt, spin_orb) / 4
+  # Alireza comment: The old factor of 1/4 in tbt_so calculations 
+  # has been simiplified by the factor of 4 that we need to transfrom npnq to (2zp-1)(2zq-1)
+  # We don't need 1/4 in the line below.
+	tbt_so = tbt_to_so(cartan_tbt, spin_orb)
 	n = size(tbt_so)[1]
 	q_casimir = zeros(typeof(tbt_so[1]),n,n)
 	for i in 1:n
