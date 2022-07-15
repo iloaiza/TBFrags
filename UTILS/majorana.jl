@@ -17,6 +17,22 @@ function majorana_l1_cost(tbt_mo :: Tuple, n = size(tbt_mo[1])[1])
 	return λT+λV
 end
 
+function majorana_l1_cost(tbt :: Array, n = size(tbt)[1])
+	global λV = 0.5 * sum(abs.(tbt))
+
+	for r in 1:n
+		for p in r+1:n
+			for q in 1:n
+				for s in q+1:n
+					global λV += abs(tbt[p,q,r,s] - tbt[p,s,r,q])
+				end
+			end
+		end
+	end
+
+	return λV
+end
+
 function majorana_U_optimizer(tbt_mo :: Tuple, u_flavour=MF_real())
 	n = size(tbt_mo[1])[1]
 	u_num = unitary_parameter_number(n, u_flavour)
