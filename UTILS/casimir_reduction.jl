@@ -249,7 +249,7 @@ function cartan_to_casimir(cartan_tbt, spin_orb)
 	for i in 1:n
 		for j in 1:n
 			if i != j
-        q_casimir[i,j] += tbt_so[i,i,j,j]
+        		q_casimir[i,j] += tbt_so[i,i,j,j]
 			end
 		end
 	end
