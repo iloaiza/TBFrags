@@ -754,6 +754,12 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	#@show H_full_q
 	println("\n\n\n Qubit treatment of Hamiltonian:")
 	qubit_treatment(H_full_q)
+
+	println("Starting Majorana treatment...")
+	@time maj_tup = majorana_parallel_U_optimizer(tbt_mo_tup, 40)
+	H_maj = qubit_transform(tbt_to_ferm(maj_tup, false), "jw")
+	println("\n\n\n Majorana qubit treatment of Hamiltonian:")
+	qubit_treatment(H_maj)
 	#= #
 	println("Starting T' boosted AC-SI routine")
 	@time L1,num_ops = bin_anticommuting_jw_sorted_insertion(tbt_mo_tup[1], tbt_mo_tup[2], cutoff = 1e-6)
@@ -817,7 +823,7 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	s_vec = zeros(3)
 	@sync @distributed for i in 1:α_CSA
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
-		# =
+		#=
 		#cartan_so = cartan_tbt_to_triang(cartan_so)
 		println("LINPROG ROUTINE for fragment=",i)
 		println("original L1:")
@@ -828,10 +834,9 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 		@show sm, l1_orig, l1_red
 		@show cartan_so_tbt_l1_cost(tbt_cartan) / 4.0
 		s_vec += sm
-		# = #
+		# =#
 		# println("SQRPROG ROUTINE...")
-		# tbt_so = cartan_tbt_purification(cartan_so, true)
-		# tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
+		tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
 		#tbt_cartan, sm = two_body_symmetry_cuadratic_optimization(cartan_so, true)
 		#  println("NAIVE ROUTINE...")
 		#  println("optimized L1:")
@@ -935,10 +940,8 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	s_vec = zeros(3)
 	@sync @distributed for i in 1:α_SVD
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
-		#sm, l1_orig, l1_red = qubit_sym_linprog_optimization(cartan_so, n_qubit, true)
-		#tbt_cartan = cartan_so - shift_builder(sm, TB_Q_SYMS)
-    #
-    println("LINPROG ROUTINE for fragment=",i)
+		#=
+		println("LINPROG ROUTINE for fragment $i")
 		println("original L1:")
 		@show cartan_so_tbt_l1_cost(cartan_so)/ 4.0
 		sm, l1_orig, l1_red = qubit_sym_linprog_optimization(cartan_so, n_qubit, true)
@@ -946,9 +949,12 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 		println("optimized L1:")
 		@show sm, l1_orig, l1_red
 		@show cartan_so_tbt_l1_cost(tbt_cartan) / 4.0
-		#tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
-		#tbt_cartan, sm = two_body_symmetry_cuadratic_optimization(cartan_so, true)
 		s_vec += sm
+		λlinprog, Δlinprog = cartan_to_qubit_l1_treatment(tbt_cartan, true)
+		λs_arr[i,:] .= [λlinprog, Δlinprog]
+		# =#
+		#tbt_cartan, sm = two_body_symmetry_cuadratic_optimization(cartan_so, true)
+		tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
 		λ, Δ = cartan_to_qubit_l1_treatment(tbt_cartan, true)
 		λs_arr[i,:] .= [λ, Δ]
 	end
@@ -1056,6 +1062,19 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	@time H_full_q = qubit_transform(shift_op, "jw")
 	println("\n\n\n Qubit treatment of Hamiltonian:")
 	qubit_treatment(H_full_q)
+
+	#=
+	println("\n\n\n Starting Majorana treatment after shift")
+	shift_vec = [x_opt[3], x_opt[5]]
+	@time tbt_rot_tup = post_shift_majorana_optimization(tbt_mo_tup, shift_vec, 10)
+	shift_tbt = shift_builder(x_opt, S_arr)
+	shift_op = tbt_to_ferm(tbt_rot_tup, false) - tbt_to_ferm(shift_tbt, true)
+	#println("\n####\n Starting full shift treatment...")
+	op_treatment(shift_op)
+	#@time maj_tup = majorana_parallel_U_optimizer(tbt_mo_tup, 10, u_flavour=MF_real())
+	#H_maj = qubit_transform(tbt_to_ferm(maj_tup, false), "jw")
+	#qubit_treatment(H_maj)
+	# =#
 
 	return 0
 
