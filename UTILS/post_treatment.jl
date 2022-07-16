@@ -155,14 +155,16 @@ function cartan_to_qubit_naive_treatment(cartan_tbt, spin_orb)
 	return ΔE
 end
 
-function cartan_to_qop(cartan_tbt, spin_orb)
+function cartan_to_qop(cartan_tbt, spin_orb, tol=1e-6)
 	#input: cartan polynomial of n_i's
 	#transforms fermionic tbt into (1-2ni)(1-2nj) -> zizj, requires correction to 1-body term
 	#output: transforms into ∑λij/4 zi zj
+	#also returns number of unitaries with norm ≥ tol
 	q_op = of.QubitOperator.zero()
 	tbt_so = tbt_to_so(cartan_tbt, spin_orb)
 	n = size(tbt_so)[1]
 
+	num_u = 0
 	global λVL1 = 0.0
 	for i in 1:n
 		for j in 1:n
@@ -170,23 +172,27 @@ function cartan_to_qop(cartan_tbt, spin_orb)
 				global λVL1 += abs(tbt_so[i,i,j,j]) / 4
 				z_string = "Z$(i-1) Z$(j-1)"
 				q_op += (tbt_so[i,i,j,j] / 4) * of.QubitOperator(z_string)
+				if tbt_so[i,i,j,j] / 4 ≥ tol
+					num_u += 1
+				end
 			end
 		end
 	end
 
-  	return q_op, λVL1
+  	return q_op, λVL1, num_u
 end
 
 function cartan_to_qubit_l1_treatment(cartan_tbt, spin_orb)
 	#input: cartan polynomial of n_i's
 	#transforms fermionic tbt into (1-2ni)(1-2nj) -> zizj, requires correction to 1-body term
-	#output: transforms into ∑λij/4 zi zj and returns sqrt norm
-  	q_op, λVL1 = cartan_to_qop(cartan_tbt, spin_orb)
+	#output: transforms into ∑λij/4 zi zj and returns:
+	# L1 norm, sqrt norm, number of unitaries (tot, <tol)
+  	q_op, λVL1, num_u = cartan_to_qop(cartan_tbt, spin_orb)
 	q_range = qubit_op_range(q_op, tol=1e-3)
 	ΔE = (q_range[2] - q_range[1])/2
 
 	#λVL1/2 factor if using oblivious amplitude amplification
-	return λVL1, ΔE
+	return λVL1, ΔE, num_u
 end
 
 function L1_frags_treatment(CARTAN_TBTS, spin_orb, α_tot = size(CARTAN_TBTS)[1], n=size(CARTAN_TBTS)[2])
@@ -809,18 +815,23 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	end
 	global λV = 0.0
 	global λVsqrt = 0.0
+	tot_num = 0
 	for i in 1:α_CSA
-		λ, Δ = cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], false)
+		λ, Δ, num_u = cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], false)
 		global λV += λ
-		global λVsqrt += Δ 
+		global λVsqrt += Δ
+		tot_num += num_u 
 	end
 	@show λT, λV, λT+λV
 	@show λTsqrt, λVsqrt, λTsqrt+λVsqrt
+	@show tot_num, log2(tot_num)
+	@show α_CSA+1, log2(α_CSA+1)
 
 	println("Starting symmetry-after routine for CSA:")
 
 	λs_arr = SharedArray(zeros(α_CSA,2))
 	s_vec = zeros(3)
+	tot_num = 0
 	@sync @distributed for i in 1:α_CSA
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
 		#=
@@ -842,8 +853,9 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 		#  println("optimized L1:")
 		#  @show cartan_so_tbt_l1_cost(tbt_cartan)/4
 		#  @show sm
-		λ, Δ = cartan_to_qubit_l1_treatment(tbt_cartan, true)
+		λ, Δ, num_u = cartan_to_qubit_l1_treatment(tbt_cartan, true)
 		λs_arr[i,:] .= [λ, Δ]
+		tot_num += num_u
 	end
 	λVp = sum(λs_arr[:,1])
 	λVpSqrt = sum(λs_arr[:,2])
@@ -860,6 +872,7 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 
 	@show λTp, λVp, λTp+λVp	
 	@show λTpSqrt, λVpSqrt, λTpSqrt+λVpSqrt
+	@show tot_num, log2(tot_num)
 	obt_shift = shift_builder(ob_sol.minimizer, OB_ARR)
 	shift_op = of_simplify(h_ferm - tbt_to_ferm(tot_shift, true) - obt_to_ferm(obt_shift, true))
 	shift_range = op_range(shift_op)
@@ -926,18 +939,23 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 
 	global λV = 0.0
 	global λVsqrt = 0.0
+	tot_num = 0
 	for i in 1:α_SVD
-		λ,Δ = cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], false)
+		λ,Δ,num_u = cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], false)
 		global λV += λ
 		global λVsqrt += Δ
+		tot_num += 1
 	end
 	@show λT, λV, λT+λV
 	@show λTsqrt, λVsqrt, λTsqrt+λVsqrt
+	@show tot_num, log2(tot_num)
+	@show α_SVD+1, log2(α_SVD+1)
 
 	println("Starting symmetry-after routine for SVD:")
 
 	λs_arr = SharedArray(zeros(α_SVD,2))
 	s_vec = zeros(3)
+	tot_num = 0
 	@sync @distributed for i in 1:α_SVD
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
 		#=
@@ -955,8 +973,9 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 		# =#
 		#tbt_cartan, sm = two_body_symmetry_cuadratic_optimization(cartan_so, true)
 		tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
-		λ, Δ = cartan_to_qubit_l1_treatment(tbt_cartan, true)
+		λ, Δ, num_u = cartan_to_qubit_l1_treatment(tbt_cartan, true)
 		λs_arr[i,:] .= [λ, Δ]
+		tot_num += num_u
 	end
 	λVp = sum(λs_arr[:,1])
 	λVpSqrt = sum(λs_arr[:,2])
@@ -973,6 +992,7 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 
 	@show λTp, λVp, λTp+λVp
 	@show λTpSqrt, λVpSqrt, λTpSqrt+λVpSqrt
+	@show tot_num, log2(tot_num)
 	obt_shift = shift_builder(ob_sol.minimizer, OB_ARR)
 	shift_op = of_simplify(h_ferm - tbt_to_ferm(tot_shift, true) - obt_to_ferm(obt_shift, true))
 	shift_range = op_range(shift_op)
