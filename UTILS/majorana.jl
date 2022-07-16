@@ -98,7 +98,7 @@ function shifted_majorana_λV_cost(tbt_mo :: Tuple, s_vec, n = size(tbt_mo[1])[1
 		end
 	end
 
-	global λV = sum(abs.(tbt_αβ))
+	global λV = 0.5*sum(abs.(tbt_αβ))
 
 	for r in 1:n
 		for p in r+1:n
@@ -110,8 +110,6 @@ function shifted_majorana_λV_cost(tbt_mo :: Tuple, s_vec, n = size(tbt_mo[1])[1
 		end
 	end
 
-	λV *= 0.5
-
 	obt_mod = tbt_mo[1] + 2*sum([tbt_mo[2][:,:,r,r] for r in 1:n])# - sum([tbt_mo[2][:,r,r,:] for r in 1:n]) already included in chemist notation
 	obt_diag = diag(obt_mod)
 	global λT = sum(abs.(obt_mod - Diagonal(obt_mod)))
@@ -119,7 +117,7 @@ function shifted_majorana_λV_cost(tbt_mo :: Tuple, s_vec, n = size(tbt_mo[1])[1
 		global λT += abs(obt_diag[i] - n*(1+1im)*sum(s_vec))
 	end
 
-	@show λT, λV
+	#@show λT, λV
 
 	return λV + λT
 end
