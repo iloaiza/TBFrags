@@ -37,7 +37,6 @@ function cartan_so_tbt_l1_cost(tbt :: Array)
 	return l1_cost
 end
 
-
 function cartan_tbt_l1_cost(tbt :: Array, spin_orb=true)
 	n=size(tbt)[1]
 
