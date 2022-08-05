@@ -234,7 +234,7 @@ function qubit_sym_linprog_optimization(cartan_tbt, n_qubit, spin_orb)
   	q_casimir = cartan_to_casimir(cartan_tbt, spin_orb)
 
   	coeff_vec, l1_orig, l1_red = car2lcu.QSR_LinProg(q_casimir, n_qubit, true)
-  	#@show l1_orig, l1_red
+
   	return coeff_vec, l1_orig, l1_red
 end
 

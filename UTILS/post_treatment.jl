@@ -834,8 +834,8 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	tot_num = 0
 	@sync @distributed for i in 1:α_CSA
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
-		#=
-		#cartan_so = cartan_tbt_to_triang(cartan_so)
+		# #=
+		cartan_so = cartan_tbt_to_triang(cartan_so)
 		println("LINPROG ROUTINE for fragment=",i)
 		println("original L1:")
 		@show cartan_so_tbt_l1_cost(cartan_so)/ 4.0
@@ -847,7 +847,7 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 		s_vec += sm
 		# =#
 		# println("SQRPROG ROUTINE...")
-		tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
+		#tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
 		#tbt_cartan, sm = two_body_symmetry_cuadratic_optimization(cartan_so, true)
 		#  println("NAIVE ROUTINE...")
 		#  println("optimized L1:")
