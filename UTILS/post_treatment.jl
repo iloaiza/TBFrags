@@ -752,7 +752,7 @@ function SHIFT_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	qubit_treatment(H_full_q)
 end
 
-function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
+function MAJORANA_TREATMENT(tbt_mo_tup, h_ferm, ham_name, reps=10)
 	println("Starting qubit treatment...")
 	# =
 	println("Performing fermion to qubit mapping:")
@@ -762,10 +762,31 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	qubit_treatment(H_full_q)
 
 	println("Starting Majorana treatment...")
+	@time maj_tup = majorana_parallel_U_optimizer(tbt_mo_tup, reps)
+	H_maj = qubit_transform(tbt_to_ferm(maj_tup, false), "jw")
+	println("\n\n\n Majorana qubit treatment of Hamiltonian:")
+	qubit_treatment(H_maj)
+
+	return 0
+end
+
+function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
+	println("Starting qubit treatment...")
+	# =
+	println("Performing fermion to qubit mapping:")
+	@time H_full_q = qubit_transform(h_ferm, "jw")
+	#@show H_full_q
+	println("\n\n\n Qubit treatment of Hamiltonian:")
+	qubit_treatment(H_full_q)
+
+	#=
+	println("Starting Majorana treatment...")
 	@time maj_tup = majorana_parallel_U_optimizer(tbt_mo_tup, 40)
 	H_maj = qubit_transform(tbt_to_ferm(maj_tup, false), "jw")
 	println("\n\n\n Majorana qubit treatment of Hamiltonian:")
 	qubit_treatment(H_maj)
+	# =#
+
 	#= #
 	println("Starting T' boosted AC-SI routine")
 	@time L1,num_ops = bin_anticommuting_jw_sorted_insertion(tbt_mo_tup[1], tbt_mo_tup[2], cutoff = 1e-6)
@@ -815,7 +836,7 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	end
 	global λV = 0.0
 	global λVsqrt = 0.0
-	tot_num = 0
+	tot_num = n_qubit
 	for i in 1:α_CSA
 		λ, Δ, num_u = cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], false)
 		global λV += λ
@@ -831,7 +852,7 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 
 	λs_arr = SharedArray(zeros(α_CSA,2))
 	s_vec = zeros(3)
-	tot_num = 0
+	tot_num = SharedArray(zeros(α_CSA))
 	@sync @distributed for i in 1:α_CSA
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
 		#=
@@ -855,8 +876,9 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 		#  @show sm
 		λ, Δ, num_u = cartan_to_qubit_l1_treatment(tbt_cartan, true)
 		λs_arr[i,:] .= [λ, Δ]
-		tot_num += num_u
+		tot_num[i] = num_u
 	end
+	tot_num = sum(tot_num) + n_qubit
 	λVp = sum(λs_arr[:,1])
 	λVpSqrt = sum(λs_arr[:,2])
 
@@ -939,12 +961,12 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 
 	global λV = 0.0
 	global λVsqrt = 0.0
-	tot_num = 0
+	tot_num = n_qubit
 	for i in 1:α_SVD
 		λ,Δ,num_u = cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], false)
 		global λV += λ
 		global λVsqrt += Δ
-		tot_num += 1
+		tot_num += num_u
 	end
 	@show λT, λV, λT+λV
 	@show λTsqrt, λVsqrt, λTsqrt+λVsqrt
@@ -955,8 +977,8 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 
 	λs_arr = SharedArray(zeros(α_SVD,2))
 	s_vec = zeros(3)
-	tot_num = 0
-	@sync @distributed for i in 1:α_SVD
+	tot_num = SharedArray(zeros(α_SVD))
+	for i in 1:α_SVD
 		cartan_so = tbt_orb_to_so(CARTANS[i,:,:,:,:])
 		#=
 		println("LINPROG ROUTINE for fragment $i")
@@ -975,8 +997,9 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 		tbt_cartan, sm = cartan_tbt_purification(cartan_so, true)
 		λ, Δ, num_u = cartan_to_qubit_l1_treatment(tbt_cartan, true)
 		λs_arr[i,:] .= [λ, Δ]
-		tot_num += num_u
+		tot_num[i] = num_u
 	end
+	tot_num = sum(tot_num) + n_qubit
 	λVp = sum(λs_arr[:,1])
 	λVpSqrt = sum(λs_arr[:,2])
 
@@ -1192,6 +1215,83 @@ function FULL_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
 	println("\n\n\n Starting optimized SVD routine for 1+2 body terms with cutoff tolerance $SVD_tol:")
 	@time svd_optimized_so(tbt_so, tol=SVD_tol)
 	# =#
+end
+
+function REDUCED_TREATMENT(tbt_mo_tup, h_ferm, ham_name)
+	println("Starting qubit treatment...")
+	# =
+	println("Performing fermion to qubit mapping:")
+	@time H_full_q = qubit_transform(h_ferm, "jw")
+	println("\n\n\n Qubit treatment of Hamiltonian:")
+	qubit_treatment(H_full_q)
+
+	
+	SVD_tol = 1e-6
+	CSA_tol = 1e-6
+
+	n_qubit = 2*size(tbt_mo_tup[1])[1]
+	
+	println("\n\n Starting CSA routine for separated 1 and 2-body terms")
+	CSA_2_NAME = "CSA_2_" * ham_name 
+	n = size(tbt_mo_tup[1])[1]
+	obt_tilde = tbt_mo_tup[1] + 2*sum([tbt_mo_tup[2][:,:,r,r] for r in 1:n])
+	obt_D, _ = eigen(obt_tilde)
+	λT = sum(abs.(obt_D))
+	mu_pos = (obt_D + abs.(obt_D))/2
+	mu_neg = obt_D - mu_pos
+	λTsqrt = (sum(mu_pos) - sum(mu_neg))
+
+	FRAGS = run_optimization("g", tbt_mo_tup[2], CSA_tol, 1, 200, false, false, Float64[], Int64[], false, CSA_2_NAME, frag_flavour=CSA(), u_flavour=MF_real())
+	α_CSA = length(FRAGS)
+
+	CARTANS = zeros(α_CSA,n,n,n,n)
+	for i in 1:α_CSA
+		CARTANS[i,:,:,:,:] = fragment_to_normalized_cartan_tbt(FRAGS[i], frag_flavour=CSA())
+	end
+	global λV = 0.0
+	global λVsqrt = 0.0
+	tot_num = n_qubit
+	for i in 1:α_CSA
+		λ, Δ, num_u = cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], false)
+		global λV += λ
+		global λVsqrt += Δ
+		tot_num += num_u 
+	end
+	@show λT, λV, λT+λV
+	@show λTsqrt, λVsqrt, λTsqrt+λVsqrt
+	@show tot_num, log2(tot_num)
+	@show α_CSA+1, log2(α_CSA+1)
+
+	
+	println("\n\n\n Starting df routine...")
+	@time svd_optimized_df(tbt_mo_tup, tol=1e-6, tiny=1e-8)
+
+	println("\n\n\n			Starting SVD routine for separated terms with Google's grouping technique:")
+	CARTANS, TBTS = tbt_svd(tbt_mo_tup[2], tol=SVD_tol, spin_orb=false, ret_op=false)
+	α_SVD = size(CARTANS)[1]
+	n = size(tbt_mo_tup[1])[1]
+	obt_tilde = tbt_mo_tup[1] + 2*sum([tbt_mo_tup[2][:,:,r,r] for r in 1:n])
+	obt_D, _ = eigen(obt_tilde)
+	λT = sum(abs.(obt_D))
+	mu_pos = (obt_D + abs.(obt_D))/2
+	mu_neg = obt_D - mu_pos
+	λTsqrt = (sum(mu_pos) - sum(mu_neg))
+
+	global λV = 0.0
+	global λVsqrt = 0.0
+	tot_num = n_qubit
+	for i in 1:α_SVD
+		λ,Δ,num_u = cartan_to_qubit_l1_treatment(CARTANS[i,:,:,:,:], false)
+		global λV += λ
+		global λVsqrt += Δ
+		tot_num += num_u
+	end
+	@show λT, λV, λT+λV
+	@show λTsqrt, λVsqrt, λTsqrt+λVsqrt
+	@show tot_num, log2(tot_num)
+	@show α_SVD+1, log2(α_SVD+1)
+
+	return 0
 end
 
 function op_treatment(OP) #FermionOperator
