@@ -583,13 +583,13 @@ def Smat_Index (n_qubit):
 #
 # Qubit-SYMMETRY REDUCTION with Linear-Programming
 #
-#def QSR_LinProg (lam, n_qubit, symout=False, optmtd='interior-point'):
-def QSR_LinProg (lam, n_qubit, symout=False, optmtd='simplex'):
+def QSR_LinProg (lam, n_qubit, symout=False, optmtd='highs-ds'):
 #FUNCTION: Symmetry Reduction via constrained L1-norm minimization in qubit space.
-    svarr = Qsvarr_builder(n_qubit)
+    cvarr = Qcvarr_builder(n_qubit)
     hsarr = lam2hsarr(lam, n_qubit)
     HSmat = QHSmat_builder(n_qubit)
-    res = opt.linprog(svarr, A_ub=HSmat, b_ub=hsarr, bounds=(None,None), method=optmtd)
+    res = opt.linprog(c=cvarr, A_ub=HSmat, b_ub=hsarr, bounds=(None,None), method=optmtd)
+# , options={'dual_feasibility_tolerance':1e-12, 'primal_feasibility_tolerance':1e-12, 'ipm_optim_tolerance':1e-14}
     sm = np.zeros(3)
     sm, l1_orig, l1_red = QSymopt_eval (res.x[0:3], lam, n_qubit)
     if ( symout == True ): 
@@ -613,6 +613,13 @@ def Qsvarr_builder(n_qubit):
     norb = int(n_qubit/2)
     udim = (2*norb**2) - norb
     return np.zeros([3+udim,1])
+
+def Qcvarr_builder(n_qubit): 
+    norb  = int(n_qubit/2)
+    udim  = (2*norb**2) - norb
+    cvarr = np.ones(3+udim)
+    cvarr[0:3] = 0.0
+    return cvarr
 
 def lam2hsarr (lam, n_qubit): 
     norb = int(n_qubit/2)
