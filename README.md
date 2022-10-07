@@ -29,10 +29,15 @@ SAVENAME explained in "SAVING RESULTS AND CALCULATION RESTARTS" last section of 
 
 ## Hamiltonian simulation, calculation of L1 norms
 Run in bash (activating python environment from installation):
-'julia H_FEMOCO.jl mol_name'
+'julia L1_SIMULATION.jl mol_name'
 where  mol_name is the name of molecule (e.g. h2).
 Check config.jl for more options
 
+This functions performs the L1 norm calculation for Pauli, AC, CSA and SVD without and with symmetry shifts (for more info, check arXiv.2208.08272).
+
+For interaction picture results, run
+'julia H_INTERACTION.jl mol_name'
+check H_INTERACTION.jl and config.jl for more arguments and options
 
 
 ### OPTIMIZATION FLAVOURS
@@ -84,3 +89,8 @@ and making sure that julia is running with the correct JULIA_DEPOT_PATH bash var
 
 ## SAVING RESULTS AND CALCULATION RESTARTS
 When launching the new calculation, just run using 'julia -p N H_DECOMP.jl mol_name SAVENAME' will load the x0 and K0 values for restarting calculation with some initial conditions. Use SAVENAME=true for loading default name saved by running H_DECOMP.jl. Make sure to turn on the configuration "saving = true" to save each step of optimization for easy restarts in UTILS/config.jl.
+
+## REFERENCING
+This code was developped and used for all results in the publication:
+
+I. Loaiza, A. Marefat Khah, N. Wiebe, and A. F. Izmaylov, Reducing molecular electronic Hamiltonian simulation cost for Linear Combination of Unitaries approaches. arXiv.2208.08272 (2022).
