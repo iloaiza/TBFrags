@@ -1,6 +1,6 @@
 #INCLUDE MODULE, INCLUDES EVERYTHING IN CORRECT ORDER
 
-using LinearAlgebra, Einsum, Optim, SharedArrays
+using LinearAlgebra, Einsum, Optim, SharedArrays, JuMP
 
 if !(@isdefined CONFIG_LOADED) #only include config file one time so constants can be later redefined
 	include("UTILS/config.jl")
@@ -29,5 +29,6 @@ include("UTILS/casimir_reduction.jl")
 include("UTILS/shift_grads.jl")
 include("UTILS/tq_utils.jl")
 include("UTILS/pauli_utils.jl")
+include("UTILS/linprog.jl")
 include("UTILS/post_treatment.jl")
 include("UTILS/majorana.jl")

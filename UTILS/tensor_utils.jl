@@ -43,6 +43,24 @@ function tbt_orb_to_so(tbt)
     return tbt_so
 end
 
+function lambda_tbt_orb_to_so(λ_tbt)
+    n = size(λ_tbt)[1]
+    n_qubit = 2n
+
+    λ_tbt_so = zeros(2n,2n)
+    for i1 in 1:n
+        for i2 in 1:n
+            for a in -1:0
+                for b in -1:0
+                    λ_tbt_so[2i1+a,2i2+b] = λ_tbt[i1,i2]
+                end
+            end
+        end
+    end
+
+    return λ_tbt_so
+end
+
 function obt_orb_to_so(obt)
     n = size(obt)[1]
     n_qubit = 2n
