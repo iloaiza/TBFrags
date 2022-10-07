@@ -1,5 +1,5 @@
 #Usage: run in terminal making sure that correct python virtual environment is activated as:
-# julia H_FEMOCO ham_name
+# julia L1_SIMULATION.jl ham_name
 # with e.g. ham_name = h2
 # or ham_name = h2o
 

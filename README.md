@@ -7,10 +7,10 @@ Fragment flavours: different classes of Sn to choose from. Unitary flavours: dif
 
 
 ## Two-body Hamiltonian CSA decomposition
-Run in bash:
+Run in bash (activating python environment from installation):
 'julia -p N H_DECOMP.jl mol_name'
 where N is the number of processors for parallel processing, and mol_name is the name of molecule (e.g. h2).
-Check run.jl and config.jl for more arguments/options
+Check H_DECOMP.jl and config.jl for more arguments/options
 e.g.:
 'julia H_DECOMP.jl lih f full-rank-non-iterative CSA MFR 8 true'
     options meaning:
@@ -26,6 +26,14 @@ Most general case, we have
 'julia -p N H_DECOMP.jl mol_name SAVENAME opt_flavour frag_flavour u_flavour α_max'
 for N=number of OpenMP threads (i.e. shared memory parallelization)
 SAVENAME explained in "SAVING RESULTS AND CALCULATION RESTARTS" last section of this file, set to false (or f) if no previous savefile.
+
+## Hamiltonian simulation, calculation of L1 norms
+Run in bash (activating python environment from installation):
+'julia H_FEMOCO.jl mol_name'
+where  mol_name is the name of molecule (e.g. h2).
+Check config.jl for more options
+
+
 
 ### OPTIMIZATION FLAVOURS
 Available optimizations (for obtaining decomposition) (parenthesis shows alias for quick referencing, both might be used in bash):

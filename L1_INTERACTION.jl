@@ -128,28 +128,10 @@ tbt_targ = tbt - tbt_inter
 inter_cost = tbt_cost(0, tbt_targ)
 println("Interaction picture main component CSA tbt approximates total by $(round((tot_cost-inter_cost)/tot_cost*100,digits=3))%")
 rem_op_CSA = of_simplify(h_ferm - tbt_to_ferm(tbt_inter, spin_orb))
-RANGE = op_range(rem_op_CSA)
+
+println("Calculating operator range")
+@time RANGE = op_range(rem_op_CSA)
 ΔE = (RANGE[2] - RANGE[1])/2
 @show ΔE
 
-#SHIFT_TREATMENT(tbt_targ, rem_op_CSA, mol_name)
 FULL_TREATMENT(tbt_targ, rem_op_CSA, "INTERACTION_CSA_"*mol_name)
-# =#
-
-#=
-tbt_so = tbt_to_so(tbt, spin_orb)
-tot_cost = tbt_cost(0, tbt_so)
-cns, u_params = tbt_svd_1st(tbt_so)
-frag_svd = fragment(u_params, cns, 1, 2n, true)
-tbt_inter = fragment_to_tbt(frag_svd, frag_flavour=CSA(), u_flavour=MF_real())
-tbt_targ = tbt_so - tbt_inter
-inter_cost = tbt_cost(0, tbt_targ)
-println("Interaction picture main component SVD tbt approximates total by $(round((tot_cost-inter_cost)/tot_cost*100,digits=3))%")
-
-rem_op_SVD = of_simplify(h_ferm - tbt_to_ferm(tbt_inter, true))
-RANGE = op_range(rem_op_SVD)
-ΔE = (RANGE[2] - RANGE[1])/2
-@show ΔE
-
-FULL_TREATMENT(tbt_targ, rem_op_SVD, "INTERACTION_SVD_"*mol_name)
-# =#
